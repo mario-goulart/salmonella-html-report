@@ -86,15 +86,16 @@
 ;;; Index page
 (define (make-index log eggs)
   (let* ((date (seconds->string (start-time log)))
-         (title (string-append "Salmonella report (" date ")")))
+         (title (string-append "Salmonella report")))
     (page-template
      `((h1 ,title)
+       (p ,date)
        ,(zebra-table
          '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies")
          (map (lambda (egg)
                 (egg-summary-line egg log))
               eggs)))
-       title: title)))
+     title: (string-append title " - " date))))
 
 
 ;;; Egg installation report page
