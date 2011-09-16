@@ -106,6 +106,10 @@
 (define dot-installed?
   (handle-exceptions exn #f (system* "dot -V > /dev/null 2>&1")))
 
+(unless dot-installed?
+  (print "Warning: the external program `dot' has not been found. "
+         "[Reverse] dependencies graphs are not going to be generated."))
+
 (define (dot->png dot-file)
   (when dot-installed?
     (system (sprintf "dot -Tpng -o ~A ~A  2>&1"
