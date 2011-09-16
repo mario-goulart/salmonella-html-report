@@ -50,15 +50,28 @@
             rows))))
 
 
+(define (link-egg-doc egg #!optional text)
+  (let ((egg (symbol->string egg)))
+    `(a (@ (href ,(make-pathname egg-doc-uri egg)))
+        ,(or text egg))))
+
+(define (link-egg-install egg #!optional text)
+  (let ((egg (symbol->string egg)))
+    `(a (@ (href ,(make-pathname "install" egg "html")))
+        ,(or text egg))))
+
 (define (egg-summary-line egg log)
-  (let ((str-egg (symbol->string egg)))
+  (let ((str-egg (symbol->string egg))
+        (broken-deps (broken-dependencies egg log)))
     `((a (@ (href ,(make-pathname "install" str-egg "html"))) ,egg)
       ,(egg-version egg log)
-      (a (@ (href ,(make-pathname egg-doc-uri str-egg))) "doc")
+      ,(link-egg-doc egg "doc")
       (a (@ (href ,(make-pathname "dep-graphs" str-egg "png"))) "dependencies")
       (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg "png")))
          "reverse dependencies")
-      ""
+      ,(if (null? broken-deps)
+           ""
+           (intersperse (map link-egg-install broken-deps) ", "))
       )))
 
 
@@ -172,6 +185,15 @@
         (lambda ()
           (print (dot-graph labels links))))
       (dot->png dot-file))))
+
+
+;;; Broken dependencies
+(define (broken-dependencies egg log)
+  (let ((deps (egg-dependencies egg log)))
+    (filter (lambda (dep)
+              (let ((status (install-status dep log)))
+                (and status (not (zero? status)))))
+            deps)))
 
 
 ;;; Usage
