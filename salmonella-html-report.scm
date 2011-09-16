@@ -1,8 +1,4 @@
-(use sxml-transforms regex posix)
-
-(load "../salmonella/salmonella.scm")
-(load "../salmonella/salmonella-log-parser.scm")
-
+(use sxml-transforms regex posix salmonella salmonella-log-parser)
 
 (define egg-doc-uri "http://wiki.call-cc.org/egg")
 (define page-css "http://wiki.call-cc.org/chicken.css")
