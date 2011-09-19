@@ -125,7 +125,7 @@
   (conc (egg->dot (car link)) " -> " (egg->dot (cdr link)) ";"))
 
 (define (egg->dot name)
-  (let ((name (symbol->string name)))
+  (let ((name (->string name)))
     (string-append
      "_" ;; for eggnames starting with numbers (e.g., 9p) and the
          ;; digraph egg
