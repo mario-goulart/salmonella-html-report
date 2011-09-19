@@ -154,6 +154,19 @@
    (string-intersperse (map link->dot links) "\n")
    "\n}"))
 
+(define reverse-dependencies
+  (let ((rev-deps '()))
+    (lambda (egg log)
+      (or (alist-ref egg rev-deps)
+          (let ((deps
+                 (filter
+                  (lambda (e)
+                    (memq egg (egg-dependencies e
+                                                log)))
+                  (log-eggs log))))
+            (set! rev-deps (cons (cons egg deps) rev-deps))
+            deps)))))
+
 (define (egg-dependencies->dot egg log dep-graphs-dir #!key reverse?)
   (let ((links '())
         (labels '()))
@@ -169,12 +182,7 @@
 
     (define (egg-deps->dot! egg)
       (let ((deps (if reverse?
-                      (filter
-                       (lambda (e)
-                         (memq egg (egg-dependencies e
-                                                     log
-                                                     with-test-dependencies?: #t)))
-                       (log-eggs log))
+                      (reverse-dependencies egg log)
                       (egg-dependencies egg log))))
         (add-label! egg (egg-version egg log) (egg-license egg log))
         (for-each (lambda (dep)
