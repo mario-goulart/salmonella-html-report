@@ -152,7 +152,7 @@
          ;; digraph egg
      (irregex-replace/all "[-+]" name "_"))))
 
-(define (label->dot label)
+(define (label->dot label log)
   (let ((egg (car label))
         (version (cadr label))
         (license (caddr label)))
@@ -161,17 +161,25 @@
           (if version
               (conc " (" version ")")
               "")
-          "\\n"
           (if license
-              (conc " (" license ")")
+              (conc "\\n(" license ")")
               "")
-          "\"]")))
+          "\""
+          ;; If egg installation failed, paint the node red
+          (let ((status (install-status egg log)))
+            (if (and status (zero? status))
+                ""
+                ",color=red,style=filled"))
+          "]")))
 
-(define (dot-graph labels links)
+(define (dot-graph labels links log)
   (string-append
    "digraph eggs {\n"
    "node [fontsize=8]\n"
-   (string-intersperse (map label->dot labels) "\n")
+   (string-intersperse (map (lambda (label)
+                              (label->dot label log))
+                            labels)
+                       "\n")
    "\n"
    (string-intersperse (map link->dot links) "\n")
    "\n}"))
@@ -229,7 +237,7 @@
     (let ((dot-file (make-pathname dep-graphs-dir (symbol->string egg) "dot")))
       (with-output-to-file dot-file
         (lambda ()
-          (print (dot-graph labels links))))
+          (print (dot-graph labels links log))))
       (dot->png dot-file))))
 
 (define (egg-dependencies-report egg log)
