@@ -170,6 +170,7 @@
 (define (dot-graph labels links)
   (string-append
    "digraph eggs {\n"
+   "node [fontsize=8]\n"
    (string-intersperse (map label->dot labels) "\n")
    "\n"
    (string-intersperse (map link->dot links) "\n")
