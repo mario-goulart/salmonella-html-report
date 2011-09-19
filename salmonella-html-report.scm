@@ -64,11 +64,9 @@
     (if (and status (not (= status -1)))
         (let ((egg (symbol->string egg)))
           `(a (@ (href ,(make-pathname "test" egg "html")))
-              ,(case status
-                 ((0) "ok")
-                 ((1) "fail")
-                 (else (error 'link-egg-test
-                              (conc "Unexpected test status: " status))))))
+              ,(if (zero? status)
+                   "ok"
+                   "fail")))
         "no test")))
 
 (define (link-egg-install egg #!optional text)
