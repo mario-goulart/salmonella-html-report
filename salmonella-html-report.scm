@@ -56,6 +56,18 @@
     `(a (@ (href ,(make-pathname egg-doc-uri egg)))
         ,(or text egg))))
 
+(define (link-egg-test egg log #!optional text)
+  (let ((status (test-status egg log)))
+    (if (and status (not (= status -1)))
+        (let ((egg (symbol->string egg)))
+          `(a (@ (href ,(make-pathname "test" egg "html")))
+              ,(case status
+                 ((0) "ok")
+                 ((1) "fail")
+                 (else (error 'link-egg-test
+                              (conc "Unexpected test status: " status))))))
+        "no test")))
+
 (define (link-egg-install egg #!optional text)
   (let ((egg (symbol->string egg)))
     `(a (@ (href ,(make-pathname "install" egg "html")))
@@ -73,6 +85,7 @@
       ,(if (null? broken-deps)
            ""
            (intersperse (map link-egg-install broken-deps) ", "))
+      ,(link-egg-test egg log)
       )))
 
 
@@ -92,7 +105,7 @@
      `((h1 ,title)
        (p ,date)
        ,(zebra-table
-         '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies")
+         '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
          (map (lambda (egg)
                 (egg-summary-line egg log))
               eggs)))
@@ -106,6 +119,13 @@
      (p "Installation time: " ,(install-duration egg log) "s")
      (pre ,(install-message egg log)))))
 
+
+;;; Egg test report page
+(define (egg-test-report egg log)
+  (page-template
+   `((h1 "Test output for " ,egg)
+     (p "Testing time: " ,(test-duration egg log) "s")
+     (pre ,(test-message egg log)))))
 
 ;;; Dependencies
 (define dot-installed?
@@ -271,6 +291,16 @@ EOF
                   (sxml-log->html
                    (egg-installation-report egg log)
                    (make-pathname installation-report-dir
+                                  (symbol->string egg)
+                                  "html")))
+                eggs)
+
+      ;; Generate the test report for each egg
+      (for-each (lambda (egg)
+                  (info (conc "Generating test report for " egg))
+                  (sxml-log->html
+                   (egg-test-report egg log)
+                   (make-pathname test-report-dir
                                   (symbol->string egg)
                                   "html")))
                 eggs)
