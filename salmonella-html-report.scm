@@ -18,6 +18,11 @@
       (print (apply conc msg))))
   (exit 1))
 
+(define *verbose* #f)
+
+(define (info msg)
+  (when *verbose*
+    (print "=== " msg)))
 
 ;;; SXML utils
 (define (page-template content #!key title)
@@ -218,6 +223,9 @@ EOF
        (log-file (or (cmd-line-arg '--log-file args) "salmonella.log"))
        (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html")))
 
+  (when (member "--verbose" args)
+    (set! *verbose* #t))
+
   (when (or (member "--help" args)
             (member "-h" args)
             (member "-help" args))
@@ -246,10 +254,12 @@ EOF
                          (string<? (symbol->string e1)
                                    (symbol->string e2))))))
       ;; Generate the index page
+      (info "Generating the index page")
       (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
 
       ;; Generate the installation report for each egg
       (for-each (lambda (egg)
+                  (info (conc "Generating installation report for " egg))
                   (sxml-log->html
                    (egg-installation-report egg log)
                    (make-pathname installation-report-dir
@@ -259,7 +269,9 @@ EOF
 
       ;; Generate the dependencies graphs page for each egg
       (for-each (lambda (egg)
+                  (info (conc "Generating reverse dependencies graph for " egg))
                   (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
+                  (info (conc "Generating dependencies graph for " egg))
                   (egg-dependencies->dot egg log dep-graphs-dir))
                 eggs)
       )))
