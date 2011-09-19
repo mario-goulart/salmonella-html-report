@@ -102,9 +102,9 @@
 ;;; Egg installation report page
 (define (egg-installation-report egg log)
   (page-template
-   `((h1 ,egg)
-     (pre ,(install-message egg log))
-     (p "Installation time: " ,(install-duration egg log) "s"))))
+   `((h1 "Installation output for " ,egg)
+     (p "Installation time: " ,(install-duration egg log) "s")
+     (pre ,(install-message egg log)))))
 
 
 ;;; Dependencies
