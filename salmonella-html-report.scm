@@ -99,17 +99,28 @@
 
 
 ;;; Index page
+(define (list-eggs-for-summary eggs log #!optional failed?)
+  (zebra-table
+   '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
+   (map (lambda (egg)
+          (egg-summary-line egg log))
+        ((if failed? remove filter)
+         (lambda (egg)
+           (let ((status (install-status egg log)))
+             (and status (zero? status))))
+         eggs))))
+
 (define (make-index log eggs)
   (let* ((date (seconds->string (start-time log)))
          (title (string-append "Salmonella report")))
     (page-template
      `((h1 ,title)
        (p ,date)
-       ,(zebra-table
-         '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
-         (map (lambda (egg)
-                (egg-summary-line egg log))
-              eggs)))
+       (h2 "Installation failed")
+       ,(list-eggs-for-summary eggs log 'failed)
+
+       (h2 "Installation succeeded")
+       ,(list-eggs-for-summary eggs log))
      title: (string-append title " - " date))))
 
 
