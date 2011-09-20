@@ -169,8 +169,17 @@
                      (pathname-replace-extension dot-file "png")
                      dot-file))))
 
-(define (link->dot link)
-  (conc (egg->dot (car link)) " -> " (egg->dot (cdr link)) ";"))
+(define (link->dot egg link log reverse?)
+  (let* ((orig (car link))
+         (dest (cdr link))
+         (direct-dep? (if reverse?
+                          (direct-reverse-dependency? egg orig log)
+                          (direct-dependency? egg dest log))))
+    (conc (egg->dot (car link)) " -> " (egg->dot (cdr link))
+          (if direct-dep?
+              ""
+              "[ color = gray ]")
+          ";")))
 
 (define (egg->dot name)
   (let ((name (->string name)))
@@ -197,9 +206,14 @@
             (if (and status (zero? status))
                 ""
                 ",color=red,style=filled"))
+          ;; If egg test failed, paint the node border red
+          (let ((status (test-status egg log)))
+            (if (and status (not (= status -1)) (not (zero? status)))
+                ",color=red"
+                ""))
           "]")))
 
-(define (dot-graph labels links log)
+(define (dot-graph egg labels links log reverse?)
   (string-append
    "digraph eggs {\n"
    "node [fontsize=8]\n"
@@ -208,7 +222,10 @@
                             labels)
                        "\n")
    "\n"
-   (string-intersperse (map link->dot links) "\n")
+   (string-intersperse (map (lambda (link)
+                              (link->dot egg link log reverse?))
+                            links)
+                       "\n")
    "\n}"))
 
 (define reverse-dependencies
@@ -223,6 +240,12 @@
                   (log-eggs log))))
             (set! rev-deps (cons (cons egg deps) rev-deps))
             deps)))))
+
+(define (direct-reverse-dependency? egg1 egg2 log)
+  (and (memq egg2 (reverse-dependencies egg1 log)) #t))
+
+(define (direct-dependency? egg1 egg2 log)
+  (and (memq egg2 (egg-dependencies egg1 log)) #t))
 
 (define (all-dependencies egg log #!optional reverse?)
   (define (get-deps egg)
