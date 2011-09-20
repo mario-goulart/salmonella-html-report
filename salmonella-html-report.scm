@@ -287,8 +287,34 @@
     (let ((dot-file (make-pathname dep-graphs-dir (symbol->string egg) "dot")))
       (with-output-to-file dot-file
         (lambda ()
-          (print (dot-graph labels links log))))
+          (print (dot-graph egg labels links log reverse?))))
       (dot->png dot-file))))
+
+(define (color-legend)
+  `((h4 "Legend")
+    (table (@ (style "width: 300px;"))
+           (tr (td (div (@ (style ,(string-append "width: 15px;"
+                                                  "height: 15px;"
+                                                  "background-color: red;")))))
+               (td "Egg whose installation failed"))
+           (tr (td (div (@ (style ,(string-append "width: 12px;"
+                                                  "height: 12px;"
+                                                  "border-style: solid;"
+                                                  "border-width: 2px;"
+                                                  "border-color: red;")))))
+               (td "Egg whose tests failed"))
+           (tr (td (hr (@ (style ,(string-append "width: 15px;"
+                                                 "background-color: black;"
+                                                 "height: 3px;"
+                                                 "border: 0px;"
+                                                 )))))
+               (td "Direct connection"))
+           (tr (td (hr (@ (style ,(string-append "width: 15px;"
+                                                 "background-color: gray;"
+                                                 "height: 3px;"
+                                                 "border: 0px;"
+                                                 )))))
+               (td "Indirect connection")))))
 
 (define (egg-dependencies-report egg log)
   (page-template
@@ -303,7 +329,8 @@
                            "(" num-direct-deps " direct, "
                            num-indirect-deps " indirect)")))))
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
-                (alt ,(conc "Dependencies graph for " egg))))))))
+                (alt ,(conc "Dependencies graph for " egg)))))
+     ,(color-legend))))
 
 (define (egg-reverse-dependencies-report egg log)
   (page-template
@@ -318,7 +345,8 @@
                            " (" num-direct-deps " direct, "
                            num-indirect-deps " indirect)")))))
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
-                (alt ,(conc "Reverse dependencies graph for " egg))))))))
+                (alt ,(conc "Reverse dependencies graph for " egg)))))
+     ,(color-legend))))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
