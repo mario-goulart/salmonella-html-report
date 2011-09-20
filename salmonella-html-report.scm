@@ -112,14 +112,26 @@
 
 (define (render-warnings log)
   (let ((warnings
-         (filter-map
-          (lambda (entry)
-            (let ((action (report-action entry)))
-              (and (memq action '(check-dependencies
-                                  check-category))
-                   (list (report-egg entry)
-                         (report-message entry)))))
-          log)))
+         (append (filter-map
+                  (lambda (entry)
+                    (let ((action (report-action entry)))
+                      (and (memq action '(check-dependencies
+                                          check-category))
+                           (list (report-egg entry)
+                                 (report-message entry)))))
+                  log)
+
+                 (filter-map
+                  (lambda (egg)
+                    (let ((gpl-deps (gpl-dependencies egg log)))
+                      (and gpl-deps
+                           (list egg
+                                 (conc egg "'s license is " (egg-license egg log)
+                                       " but it has GPL eggs as dependencies: "
+                                       (string-intersperse
+                                        (map ->string gpl-deps)
+                                        ", "))))))
+                  (log-eggs log)))))
     (if warnings
         `((h2 "Warnings")
           ,(zebra-table '("Egg" "Warning") warnings))
@@ -355,6 +367,20 @@
               (let ((status (install-status dep log)))
                 (and status (not (zero? status)))))
             deps)))
+
+;;; GPL infection
+(define (gpl? license)
+  (and license (or (string-prefix-ci? "GPL" license)
+                   (string-prefix-ci? "AGPL" license))))
+
+(define (gpl-dependencies egg log)
+  (and (not (gpl? (egg-license egg log)))
+       (let* ((deps (egg-dependencies egg log with-test-dependencies?: #t))
+              (gpl-deps (filter-map (lambda (egg)
+                                      (and (gpl? (egg-license egg log))
+                                           egg))
+                                    deps)))
+         (and (not (null? gpl-deps)) gpl-deps))))
 
 
 ;;; Usage
