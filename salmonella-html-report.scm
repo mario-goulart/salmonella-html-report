@@ -110,12 +110,28 @@
              (and status (zero? status))))
          eggs))))
 
+(define (render-warnings log)
+  (let ((warnings
+         (filter-map
+          (lambda (entry)
+            (let ((action (report-action entry)))
+              (and (memq action '(check-dependencies
+                                  check-category))
+                   (list (report-egg entry)
+                         (report-message entry)))))
+          log)))
+    (if warnings
+        `((h2 "Warnings")
+          ,(zebra-table '("Egg" "Warning") warnings))
+        '())))
+
 (define (make-index log eggs)
   (let* ((date (seconds->string (start-time log)))
          (title (string-append "Salmonella report")))
     (page-template
      `((h1 ,title)
        (p ,date)
+       ,(render-warnings log)
        (h2 "Installation failed")
        ,(list-eggs-for-summary eggs log 'failed)
 
