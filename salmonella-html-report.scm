@@ -339,7 +339,7 @@
              (num-direct-deps (length (reverse-dependencies egg log)))
              (num-indirect-deps (- total-deps num-direct-deps)))
         `(p ,(case total-deps
-               ((0) (conc "No egg depend on " egg "."))
+               ((0) (conc "No egg depends on " egg "."))
                ((1) (conc "1 egg depends on " egg "."))
                (else (conc total-deps " eggs depend on " egg
                            " (" num-direct-deps " direct, "
