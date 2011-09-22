@@ -430,10 +430,8 @@ EOF
     (create-directory rev-dep-graphs-dir)
 
     (let* ((log (read-log-file log-file))
-           (eggs (sort (log-eggs log)
-                       (lambda (e1 e2)
-                         (string<? (symbol->string e1)
-                                   (symbol->string e2))))))
+           (eggs (sort-eggs (log-eggs log))))
+
       ;; Generate the index page
       (info "Generating the index page")
       (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
