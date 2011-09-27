@@ -132,10 +132,10 @@
                                         (map ->string gpl-deps)
                                         ", "))))))
                   (log-eggs log)))))
-    (if warnings
+    (if (null? warnings)
+        '()
         `((h2 "Warnings")
-          ,(zebra-table '("Egg" "Warning") warnings))
-        '())))
+          ,(zebra-table '("Egg" "Warning") warnings)))))
 
 (define (make-index log eggs)
   (let* ((date (seconds->string (start-time log)))
