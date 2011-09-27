@@ -1,0 +1,9 @@
+;;;; -*- scheme -*-
+((synopsis "A tool generate HTML ouput out of salmonella log files")
+ (author "<a href=\"http://wiki.call-cc.org/users/mario-domenech-goulart\">Mario Domenech Goulart</a>")
+ (license "BSD")
+ (category egg-tools)
+ (doc-from-wiki)
+ (egg "salmonella-html-report.egg")
+ (depends sxml-transforms regex salmonella)
+ )
