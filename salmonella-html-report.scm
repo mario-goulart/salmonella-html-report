@@ -404,6 +404,9 @@ EOF
        (log-file (or (cmd-line-arg '--log-file args) "salmonella.log"))
        (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html")))
 
+  (when (null? args)
+    (usage 1))
+
   (when (member "--verbose" args)
     (set! *verbose* #t))
 
