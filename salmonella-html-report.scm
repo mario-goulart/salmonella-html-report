@@ -165,7 +165,8 @@
   (page-template
    `((h1 "Test output for " ,egg)
      (p "Testing time: " ,(test-duration egg log) "s")
-     (pre ,(test-message egg log)))))
+     (pre ,(test-message egg log)))
+   title: (conc "Test output for " egg)))
 
 ;;; Dependencies
 (define dot-installed?
@@ -342,7 +343,8 @@
                            num-indirect-deps " indirect)")))))
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
                 (alt ,(conc "Dependencies graph for " egg)))))
-     ,(color-legend))))
+     ,(color-legend))
+   title: (conc "Dependencies for " egg)))
 
 (define (egg-reverse-dependencies-report egg log)
   (page-template
@@ -358,7 +360,8 @@
                            num-indirect-deps " indirect)")))))
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
                 (alt ,(conc "Reverse dependencies graph for " egg)))))
-     ,(color-legend))))
+     ,(color-legend))
+   title: (conc "Reverse dependencies for " egg)))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
