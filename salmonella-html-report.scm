@@ -189,7 +189,10 @@
        ,(list-eggs eggs log 'failed)
 
        (h2 "Installation succeeded")
-       ,(list-eggs eggs log))
+       ,(list-eggs eggs log)
+
+       (h2 "Environment information")
+       (pre ,(salmonella-info log)))
      title: (string-append title " - " date))))
 
 
