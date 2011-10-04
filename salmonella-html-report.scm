@@ -43,7 +43,9 @@
 
 (define (zebra-table header rows)
   `(table
-    (tr ,@(map (lambda (h) `(th ,h)) header))
+    ,(if header
+         `(tr ,@(map (lambda (h) `(th ,h)) header))
+         '())
     ,(let ((odd-row #f))
        (map (lambda (row)
               (set! odd-row (not odd-row))
