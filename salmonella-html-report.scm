@@ -164,7 +164,9 @@
                   (lambda (entry)
                     (let ((action (report-action entry)))
                       (and (memq action '(check-dependencies
-                                          check-category))
+                                          check-category
+                                          check-license
+                                          check-author))
                            (list (report-egg entry)
                                  (report-message entry)))))
                   log)
