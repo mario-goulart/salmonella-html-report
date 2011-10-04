@@ -99,7 +99,7 @@
 
 
 ;;; Index page
-(define (list-eggs-for-summary eggs log #!optional failed?)
+(define (list-eggs eggs log #!optional failed?)
   (zebra-table
    '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
    (map (lambda (egg)
@@ -145,10 +145,10 @@
        (p ,date)
        ,(render-warnings log)
        (h2 "Installation failed")
-       ,(list-eggs-for-summary eggs log 'failed)
+       ,(list-eggs eggs log 'failed)
 
        (h2 "Installation succeeded")
-       ,(list-eggs-for-summary eggs log))
+       ,(list-eggs eggs log))
      title: (string-append title " - " date))))
 
 
