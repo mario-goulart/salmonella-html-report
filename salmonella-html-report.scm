@@ -431,7 +431,7 @@
 (define (usage #!optional exit-code)
   (let* ((this-program (pathname-strip-directory (program-name)))
          (msg #<#EOF
-Usage: #this-program --log-file=<salmonella log file> --out-dir=<out dir>
+Usage: #this-program --log-file=<salmonella log file> --out-dir=<out dir> [ --disable-graphs ] [ --verbose ]
 EOF
 ))
     (with-output-to-port
@@ -446,7 +446,8 @@ EOF
 
 (let* ((args (command-line-arguments))
        (log-file (or (cmd-line-arg '--log-file args) "salmonella.log"))
-       (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html")))
+       (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html"))
+       (disable-graphs? (and (member "--disable-graphs" args) #t)))
 
   (when (null? args)
     (usage 1))
@@ -504,7 +505,7 @@ EOF
                 eggs)
 
       ;; Generate the dependencies graphs page for each egg
-      (when dot-installed?
+      (when (and dot-installed? (not disable-graphs?))
         (for-each (lambda (egg)
                     (info (conc "Generating reverse dependencies graph for " egg))
                     (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
