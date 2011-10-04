@@ -59,7 +59,7 @@
       (let ((egg (symbol->string egg)))
         `(a (@ (href ,(make-pathname egg-doc-uri egg)))
             ,(or text egg)))
-      "no doc"))
+      ""))
 
 (define (link-egg-test egg log #!optional text)
   (let ((status (test-status egg log)))
@@ -69,7 +69,7 @@
               ,(if (zero? status)
                    "ok"
                    "fail")))
-        "no test")))
+        "")))
 
 (define (link-egg-install egg #!optional text)
   (let ((egg (symbol->string egg)))
