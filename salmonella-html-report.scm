@@ -208,8 +208,13 @@
 (define (egg-installation-report egg log)
   (page-template
    `((h1 "Installation output for " ,egg)
-     (p "Installation time: " ,(install-duration egg log) "s")
-     (pre ,(install-message egg log)))))
+     ,(cond ((not (zero? (fetch-status egg log)))
+             '(p "Fetching error"))
+            ((not (meta-data egg log))
+             '(p "Error reading .meta file"))
+            (else
+             `((p "Installation time: " ,(install-duration egg log) "s")
+               (pre ,(install-message egg log))))))))
 
 
 ;;; Egg test report page
