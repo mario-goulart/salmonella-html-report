@@ -101,6 +101,44 @@
 
 
 ;;; Index page
+(define (render-summary log)
+  (let ((blank '(literal "&nbsp;")))
+    `((h2 "Summary")
+      (table
+       (tr (th "Installation")
+           (th "Tests")
+           (th "Documentation")
+           (th "Total"))
+       (tr
+        ;; Installation
+        (td ,(zebra-table
+              #f
+              `(("Ok" ,(count-install-ok log))
+                ("Failed" ,(count-install-fail log))
+                (,blank ,blank))))
+
+        ;; Tests
+        (td ,(zebra-table
+              #f
+              `(("Ok" ,(count-test-ok log))
+                ("Failed" ,(count-test-fail log))
+                ("No test" ,(count-no-test log)))))
+
+        ;; Documentation
+        (td ,(zebra-table
+              #f
+              `(("Documented" ,(count-documented log))
+                ("Undocumented" ,(count-undocumented log))
+                (,blank ,blank))))
+
+        ;; Total
+        (td ,(zebra-table
+              #f
+              `(("Total number of eggs" ,(count-total-eggs log))
+                (,blank ,blank) ;; no info about skipped eggs...
+                (,blank ,blank))))
+        )))))
+
 (define (list-eggs eggs log #!optional failed?)
   (zebra-table
    '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
@@ -145,6 +183,7 @@
     (page-template
      `((h1 ,title)
        (p ,date)
+       ,(render-summary log)
        ,(render-warnings log)
        (h2 "Installation failed")
        ,(list-eggs eggs log 'failed)
