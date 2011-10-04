@@ -76,19 +76,22 @@
     `(a (@ (href ,(make-pathname "install" egg "html")))
         ,(or text egg))))
 
-(define (egg-summary-line egg log)
+(define (egg-summary-line egg log #!optional failed?)
   (let ((str-egg (symbol->string egg))
         (broken-deps (broken-dependencies egg log)))
-    `((a (@ (href ,(make-pathname "install" str-egg "html"))) ,egg)
-      ,(egg-version egg log)
-      ,(link-egg-doc egg log "egg page")
-      (a (@ (href ,(make-pathname "dep-graphs" str-egg "html"))) "dependencies")
-      (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg "html")))
-         "reverse dependencies")
-      ,(if (null? broken-deps)
-           ""
-           (intersperse (map link-egg-install broken-deps) ", "))
-      ,(link-egg-test egg log)
+    (append
+     `((a (@ (href ,(make-pathname "install" str-egg "html"))) ,egg)
+       ,(egg-version egg log)
+       ,(link-egg-doc egg log "egg page")
+       (a (@ (href ,(make-pathname "dep-graphs" str-egg "html"))) "dependencies")
+       (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg "html")))
+          "reverse dependencies"))
+     (if failed?
+         (if (null? broken-deps)
+             '()
+             (list (intersperse (map link-egg-install broken-deps) ", ")))
+         '())
+     `(,(link-egg-test egg log))
       )))
 
 
@@ -141,9 +144,14 @@
 
 (define (list-eggs eggs log #!optional failed?)
   (zebra-table
-   '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies" "Test")
+   (append
+    '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies")
+    (if failed?
+        '("Broken dependencies")
+        '())
+    '("Test"))
    (map (lambda (egg)
-          (egg-summary-line egg log))
+          (egg-summary-line egg log failed?))
         ((if failed? remove filter)
          (lambda (egg)
            (let ((status (install-status egg log)))
