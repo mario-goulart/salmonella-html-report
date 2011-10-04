@@ -504,21 +504,22 @@ EOF
                 eggs)
 
       ;; Generate the dependencies graphs page for each egg
-      (for-each (lambda (egg)
-                  (info (conc "Generating reverse dependencies graph for " egg))
-                  (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
-                  (sxml-log->html
-                   (egg-reverse-dependencies-report egg log)
-                   (make-pathname rev-dep-graphs-dir
-                                  (symbol->string egg)
-                                  "html"))
+      (when dot-installed?
+        (for-each (lambda (egg)
+                    (info (conc "Generating reverse dependencies graph for " egg))
+                    (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
+                    (sxml-log->html
+                     (egg-reverse-dependencies-report egg log)
+                     (make-pathname rev-dep-graphs-dir
+                                    (symbol->string egg)
+                                    "html"))
 
-                  (info (conc "Generating dependencies graph for " egg))
-                  (egg-dependencies->dot egg log dep-graphs-dir)
-                  (sxml-log->html
-                   (egg-dependencies-report egg log)
-                   (make-pathname dep-graphs-dir
-                                  (symbol->string egg)
-                                  "html")))
-                eggs)
+                    (info (conc "Generating dependencies graph for " egg))
+                    (egg-dependencies->dot egg log dep-graphs-dir)
+                    (sxml-log->html
+                     (egg-dependencies-report egg log)
+                     (make-pathname dep-graphs-dir
+                                    (symbol->string egg)
+                                    "html")))
+                  eggs))
       )))
