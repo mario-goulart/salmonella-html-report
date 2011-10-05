@@ -149,7 +149,9 @@
     (if failed?
         '("Broken dependencies")
         '())
-    '("Test"))
+    (if failed?
+        '()
+        '("Test")))
    (map (lambda (egg)
           (egg-summary-line egg log failed?))
         ((if failed? remove filter)
