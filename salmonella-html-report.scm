@@ -204,7 +204,10 @@
        ,(list-eggs eggs log)
 
        (h2 "Environment information")
-       (pre ,(salmonella-info log)))
+       (pre ,(salmonella-info log))
+
+       (h3 "Total run time")
+       ,(prettify-time (inexact->exact (total-time log))))
      title: (string-append title " - " date))))
 
 
