@@ -226,7 +226,9 @@
             ((not (meta-data egg log))
              '(p "Error reading .meta file"))
             (else
-             `((p "Installation time: " ,(install-duration egg log) "s")
+             `((p "Installation time: "
+                  ,(prettify-time
+                    (inexact->exact (install-duration egg log))))
                (pre ,(install-message egg log))))))))
 
 
@@ -234,7 +236,8 @@
 (define (egg-test-report egg log)
   (page-template
    `((h1 "Test output for " ,egg)
-     (p "Testing time: " ,(test-duration egg log) "s")
+     (p "Testing time: "
+        ,(prettify-time (inexact->exact (test-duration egg log))))
      (pre ,(test-message egg log)))
    title: (conc "Test output for " egg)))
 
