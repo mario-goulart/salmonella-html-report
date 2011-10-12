@@ -137,9 +137,9 @@
         ;; Total
         (td ,(zebra-table
               #f
-              `(("Total number of eggs" ,(count-total-eggs log))
-                (,blank ,blank) ;; no info about skipped eggs...
-                (,blank ,blank))))
+              `(("Total number of eggs" ,(count-total-eggs log with-skipped?: #t))
+                ("Not skipped" ,(count-total-eggs log with-skipped?: #f))
+                ("Skipped" ,(length (log-skipped-eggs log))))))
         )))))
 
 (define (list-eggs eggs log #!optional failed?)
@@ -202,6 +202,12 @@
 
        (h2 "Installation succeeded")
        ,(list-eggs eggs log)
+
+       ,(let ((skipped-eggs (log-skipped-eggs log)))
+          (if (null? skipped-eggs)
+              '()
+              `((h2 "Skipped eggs")
+                ,(zebra-table #f (map list skipped-eggs)))))
 
        (h2 "Environment information")
        (pre ,(salmonella-info log))
