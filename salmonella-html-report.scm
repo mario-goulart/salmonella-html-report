@@ -529,14 +529,17 @@ EOF
                                   "html")))
                 eggs)
 
-      ;; Generate the test report for each egg
+      ;; Generate the test report for each egg that has test and whose
+      ;; installation is successful
       (for-each (lambda (egg)
-                  (info (conc "Generating test report for " egg))
-                  (sxml-log->html
-                   (egg-test-report egg log)
-                   (make-pathname test-report-dir
-                                  (symbol->string egg)
-                                  "html")))
+                  (when (and (has-test? egg log)
+                             (zero? (install-status egg log)))
+                    (info (conc "Generating test report for " egg))
+                    (sxml-log->html
+                     (egg-test-report egg log)
+                     (make-pathname test-report-dir
+                                    (symbol->string egg)
+                                    "html"))))
                 eggs)
 
       ;; Generate the dependencies graphs page for each egg
