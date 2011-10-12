@@ -1,7 +1,7 @@
 (use sxml-transforms regex posix salmonella salmonella-log-parser)
 
 (define egg-doc-uri "http://wiki.call-cc.org/egg")
-(define page-css "http://wiki.call-cc.org/chicken.css")
+(define *page-css* "http://wiki.call-cc.org/chicken.css")
 
 
 ;;; Misc
@@ -34,7 +34,7 @@
            (meta (@ (charset "utf-8")))
            (title ,title)
            (link (@ (rel "stylesheet")
-                    (href ,page-css)
+                    (href ,*page-css*)
                     (type "text/css"))))
           (body
            (div (@ (id "content"))
@@ -460,7 +460,7 @@
 (define (usage #!optional exit-code)
   (let* ((this-program (pathname-strip-directory (program-name)))
          (msg #<#EOF
-Usage: #this-program --log-file=<salmonella log file> --out-dir=<out dir> [ --disable-graphs ] [ --verbose ]
+Usage: #this-program --log-file=<salmonella log file> --out-dir=<out dir> [ --disable-graphs ] [ --css-uri=<uri> ] [ --verbose ]
 EOF
 ))
     (with-output-to-port
@@ -476,7 +476,8 @@ EOF
 (let* ((args (command-line-arguments))
        (log-file (or (cmd-line-arg '--log-file args) "salmonella.log"))
        (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html"))
-       (disable-graphs? (and (member "--disable-graphs" args) #t)))
+       (disable-graphs? (and (member "--disable-graphs" args) #t))
+       (css (cmd-line-arg '--css-uri args)))
 
   (when (null? args)
     (usage 1))
@@ -494,6 +495,8 @@ EOF
 
   (when (file-exists? out-dir)
     (die out-dir " already exists. Aborting."))
+
+  (when css (set! *page-css* css))
 
   ;; Create directories
   (let ((installation-report-dir (make-pathname out-dir "install"))
