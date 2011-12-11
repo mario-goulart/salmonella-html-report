@@ -229,7 +229,8 @@
              `((p "Installation time: "
                   ,(prettify-time
                     (inexact->exact (install-duration egg log))))
-               (pre ,(install-message egg log))))))))
+               (pre ,(install-message egg log))))))
+   title: (conc "Installation report for " egg)))
 
 
 ;;; Egg test report page
