@@ -3,7 +3,7 @@
 ;; Compile the application
 (compile -S -O3 -d1 salmonella-html-report.scm -o salmonella-html-report)
 
-(define salmonella-html-report-version "2.0")
+(define salmonella-html-report-version "1.0")
 
 (install-program 'salmonella-html-report
                  '("salmonella-html-report")
