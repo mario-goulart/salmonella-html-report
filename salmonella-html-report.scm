@@ -463,7 +463,7 @@
 (define (usage #!optional exit-code)
   (let* ((this-program (pathname-strip-directory (program-name)))
          (msg #<#EOF
-Usage: #this-program --log-file=<salmonella log file> --out-dir=<out dir> [ --disable-graphs ] [ --css-uri=<uri> ] [ --verbose ]
+Usage: #this-program [ --disable-graphs ] [ --css-uri=<uri> ] [ --verbose ] <salmonella log file> <out dir>
 EOF
 ))
     (with-output-to-port
@@ -477,12 +477,10 @@ EOF
 
 
 (let* ((args (command-line-arguments))
-       (log-file (or (cmd-line-arg '--log-file args) "salmonella.log"))
-       (out-dir (or (cmd-line-arg '--out-dir args) "salmonella-html"))
        (disable-graphs? (and (member "--disable-graphs" args) #t))
        (css (cmd-line-arg '--css-uri args)))
 
-  (when (null? args)
+  (when (< (length args) 2)
     (usage 1))
 
   (when (member "--verbose" args)
@@ -493,72 +491,75 @@ EOF
             (member "-help" args))
     (usage 0))
 
-  (unless (file-exists? log-file)
-    (die "Could not find " log-file ". Aborting."))
+  (let ((out-dir (last args))
+        (log-file (last (butlast args))))
 
-  (when (file-exists? out-dir)
-    (die out-dir " already exists. Aborting."))
+    (unless (file-exists? log-file)
+      (die "Could not find " log-file ". Aborting."))
 
-  (when css (set! *page-css* css))
+    (when (file-exists? out-dir)
+      (die out-dir " already exists. Aborting."))
 
-  ;; Create directories
-  (let ((installation-report-dir (make-pathname out-dir "install"))
-        (test-report-dir (make-pathname out-dir "test"))
-        (dep-graphs-dir (make-pathname out-dir "dep-graphs"))
-        (rev-dep-graphs-dir (make-pathname out-dir "rev-dep-graphs")))
-    (create-directory out-dir 'with-parents)
-    (create-directory installation-report-dir)
-    (create-directory test-report-dir)
-    (create-directory dep-graphs-dir)
-    (create-directory rev-dep-graphs-dir)
+    (when css (set! *page-css* css))
 
-    (let* ((log (read-log-file log-file))
-           (eggs (sort-eggs (log-eggs log))))
+    ;; Create directories
+    (let ((installation-report-dir (make-pathname out-dir "install"))
+          (test-report-dir (make-pathname out-dir "test"))
+          (dep-graphs-dir (make-pathname out-dir "dep-graphs"))
+          (rev-dep-graphs-dir (make-pathname out-dir "rev-dep-graphs")))
+      (create-directory out-dir 'with-parents)
+      (create-directory installation-report-dir)
+      (create-directory test-report-dir)
+      (create-directory dep-graphs-dir)
+      (create-directory rev-dep-graphs-dir)
 
-      ;; Generate the index page
-      (info "Generating the index page")
-      (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
+      (let* ((log (read-log-file log-file))
+             (eggs (sort-eggs (log-eggs log))))
 
-      ;; Generate the installation report for each egg
-      (for-each (lambda (egg)
-                  (info (conc "Generating installation report for " egg))
-                  (sxml-log->html
-                   (egg-installation-report egg log)
-                   (make-pathname installation-report-dir
-                                  (symbol->string egg)
-                                  "html")))
-                eggs)
+        ;; Generate the index page
+        (info "Generating the index page")
+        (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
 
-      ;; Generate the test report for each egg that has test and whose
-      ;; installation is successful
-      (for-each (lambda (egg)
-                  (when (and (has-test? egg log)
-                             (zero? (install-status egg log)))
-                    (info (conc "Generating test report for " egg))
-                    (sxml-log->html
-                     (egg-test-report egg log)
-                     (make-pathname test-report-dir
-                                    (symbol->string egg)
-                                    "html"))))
-                eggs)
-
-      ;; Generate the dependencies graphs page for each egg
-      (when (and dot-installed? (not disable-graphs?))
+        ;; Generate the installation report for each egg
         (for-each (lambda (egg)
-                    (info (conc "Generating reverse dependencies graph for " egg))
-                    (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
+                    (info (conc "Generating installation report for " egg))
                     (sxml-log->html
-                     (egg-reverse-dependencies-report egg log)
-                     (make-pathname rev-dep-graphs-dir
-                                    (symbol->string egg)
-                                    "html"))
-
-                    (info (conc "Generating dependencies graph for " egg))
-                    (egg-dependencies->dot egg log dep-graphs-dir)
-                    (sxml-log->html
-                     (egg-dependencies-report egg log)
-                     (make-pathname dep-graphs-dir
+                     (egg-installation-report egg log)
+                     (make-pathname installation-report-dir
                                     (symbol->string egg)
                                     "html")))
-                  eggs))
-      )))
+                  eggs)
+
+        ;; Generate the test report for each egg that has test and whose
+        ;; installation is successful
+        (for-each (lambda (egg)
+                    (when (and (has-test? egg log)
+                               (zero? (install-status egg log)))
+                      (info (conc "Generating test report for " egg))
+                      (sxml-log->html
+                       (egg-test-report egg log)
+                       (make-pathname test-report-dir
+                                      (symbol->string egg)
+                                      "html"))))
+                  eggs)
+
+        ;; Generate the dependencies graphs page for each egg
+        (when (and dot-installed? (not disable-graphs?))
+          (for-each (lambda (egg)
+                      (info (conc "Generating reverse dependencies graph for " egg))
+                      (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
+                      (sxml-log->html
+                       (egg-reverse-dependencies-report egg log)
+                       (make-pathname rev-dep-graphs-dir
+                                      (symbol->string egg)
+                                      "html"))
+
+                      (info (conc "Generating dependencies graph for " egg))
+                      (egg-dependencies->dot egg log dep-graphs-dir)
+                      (sxml-log->html
+                       (egg-dependencies-report egg log)
+                       (make-pathname dep-graphs-dir
+                                      (symbol->string egg)
+                                      "html")))
+                    eggs))
+        ))))
