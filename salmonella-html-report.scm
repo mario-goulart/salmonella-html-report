@@ -1,5 +1,8 @@
 (use sxml-transforms regex posix salmonella salmonella-log-parser)
 
+;; TODO
+;; - maybe optimize `all-dependencies' (memoization?)
+
 (define egg-doc-uri "http://wiki.call-cc.org/egg")
 (define *page-css* "http://wiki.call-cc.org/chicken.css")
 
@@ -196,6 +199,7 @@
      `((h1 ,title)
        (p ,date)
        ,(render-summary log)
+       ,(ranks-report)
        ,(render-warnings log)
        (h2 "Installation failed")
        ,(list-eggs eggs log 'failed)
@@ -460,6 +464,83 @@
          (and (not (null? gpl-deps)) gpl-deps))))
 
 
+;;; Ranks
+(define (ranks-report)
+  `((h2 "Ranks")
+    (ul
+     (li (a (@ (href "ranks/installation-time.html")) "Installation time"))
+     (li (a (@ (href "ranks/test-time.html")) "Test time"))
+     (li (a (@ (href "ranks/deps.html")) "Dependencies"))
+     (li (a (@ (href "ranks/rev-deps.html")) "Reverse dependencies")))))
+
+(define (rank-duration action log)
+  (map (lambda (egg/duration)
+         (list (car egg/duration) (prettify-time (cdr egg/duration))))
+       (sort (filter-map (lambda (entry)
+                           (let ((entry-action (report-action entry)))
+                             (and (eq? action entry-action)
+                                  (cons (report-egg entry)
+                                        (report-duration entry)))))
+                         log)
+             (lambda (a b)
+               (> (cdr a) (cdr b))))))
+
+
+(define (rank-page-nav)
+  '(p (a (@ (href "..")) "Report summary")))
+
+(define (rank-installation-time log)
+  (page-template
+   `((h1 "Installation time rank")
+     ,(rank-page-nav)
+     ,(zebra-table
+       '("Egg" "Instalation time")
+       (rank-duration 'install log)))
+   title: "Installation time rank"))
+
+
+(define (rank-test-time log)
+  (page-template
+   `((h1 "Test time rank")
+     ,(rank-page-nav)
+     ,(zebra-table
+       `("Egg" "Test time")
+       (rank-duration 'test log)))
+   title: "Test time rank"))
+
+
+(define (rank-dependencies log graphs-disabled? #!optional reverse?)
+  (page-template
+   `((h1 ,(if reverse?
+              "Reverse dependencies rank"
+              "Dependencies rank"))
+     ,(rank-page-nav)
+     ,(zebra-table
+       `("Egg" ,(if reverse?
+                    "Number of reverse dependencies"
+                    "Number of dependencies")
+         "Percentage of the total number of eggs")
+       (let* ((all-eggs (log-eggs log))
+              (num-eggs (length all-eggs)))
+         (sort (map (lambda (egg)
+                      (let ((num-deps (length (all-dependencies egg log reverse?))))
+                        (list (if graphs-disabled?
+                                  egg
+                                  `(a (@ (href
+                                          ,(make-pathname (list ".."
+                                                                (if reverse?
+                                                                    "rev-dep-graphs"
+                                                                    "dep-graphs"))
+                                                          (symbol->string egg)
+                                                          "html")))
+                                      ,egg))
+                              num-deps
+                              (conc (inexact->exact (round (* (/ num-deps num-eggs) 100))) "%"))))
+                    all-eggs)
+               (lambda (a b)
+                 (> (cadr a) (cadr b)))))))))
+
+
 ;;; Usage
 (define (usage #!optional exit-code)
   (let* ((this-program (pathname-strip-directory (program-name)))
@@ -507,12 +588,14 @@ EOF
     (let ((installation-report-dir (make-pathname out-dir "install"))
           (test-report-dir (make-pathname out-dir "test"))
           (dep-graphs-dir (make-pathname out-dir "dep-graphs"))
-          (rev-dep-graphs-dir (make-pathname out-dir "rev-dep-graphs")))
+          (rev-dep-graphs-dir (make-pathname out-dir "rev-dep-graphs"))
+          (ranks-dir (make-pathname out-dir "ranks")))
       (create-directory out-dir 'with-parents)
       (create-directory installation-report-dir)
       (create-directory test-report-dir)
       (create-directory dep-graphs-dir)
       (create-directory rev-dep-graphs-dir)
+      (create-directory ranks-dir)
 
       (let* ((log (read-log-file log-file))
              (eggs (sort-eggs (log-eggs log))))
@@ -563,4 +646,14 @@ EOF
                                       (symbol->string egg)
                                       "html")))
                     eggs))
+
+        ;; Generate the ranks page
+        (sxml-log->html (rank-installation-time log)
+                        (make-pathname ranks-dir "installation-time" "html"))
+        (sxml-log->html (rank-test-time log)
+                        (make-pathname ranks-dir "test-time" "html"))
+        (sxml-log->html (rank-dependencies log disable-graphs?)
+                        (make-pathname ranks-dir "deps" "html"))
+        (sxml-log->html (rank-dependencies log disable-graphs? 'reverse)
+                        (make-pathname ranks-dir "rev-deps" "html"))
         ))))
