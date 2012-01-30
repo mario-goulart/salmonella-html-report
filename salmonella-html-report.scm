@@ -199,7 +199,6 @@
      `((h1 ,title)
        (p ,date)
        ,(render-summary log)
-       ,(ranks-report)
        ,(render-warnings log)
        (h2 "Installation failed")
        ,(list-eggs eggs log 'failed)
@@ -212,6 +211,8 @@
               '()
               `((h2 "Skipped eggs")
                 ,(zebra-table #f (map list skipped-eggs)))))
+
+       ,(ranks-report)
 
        (h2 "Environment information")
        (pre ,(salmonella-info log))
