@@ -235,7 +235,7 @@
                   ,(prettify-time
                     (inexact->exact (install-duration egg log))))
                (pre ,(install-message egg log))))))
-   title: (conc "Installation report for " egg)))
+   title: (conc egg ": Installation report")))
 
 
 ;;; Egg test report page
@@ -245,7 +245,7 @@
      (p "Testing time: "
         ,(prettify-time (inexact->exact (test-duration egg log))))
      (pre ,(test-message egg log)))
-   title: (conc "Test output for " egg)))
+   title: (conc egg ": Test output")))
 
 ;;; Dependencies
 (define dot-installed?
@@ -423,7 +423,7 @@
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
                 (alt ,(conc "Dependencies graph for " egg)))))
      ,(color-legend))
-   title: (conc "Dependencies for " egg)))
+   title: (conc egg ": Dependencies")))
 
 (define (egg-reverse-dependencies-report egg log)
   (page-template
@@ -440,7 +440,7 @@
      (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
                 (alt ,(conc "Reverse dependencies graph for " egg)))))
      ,(color-legend))
-   title: (conc "Reverse dependencies for " egg)))
+   title: (conc egg ": Reverse dependencies")))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
