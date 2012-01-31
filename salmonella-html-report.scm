@@ -539,7 +539,10 @@
                               (conc (inexact->exact (round (* (/ num-deps num-eggs) 100))) "%"))))
                     all-eggs)
                (lambda (a b)
-                 (> (cadr a) (cadr b)))))))))
+                 (> (cadr a) (cadr b)))))))
+   title: (if reverse?
+              "Reverse dependencies rank"
+              "Dependencies rank")))
 
 
 ;;; Usage
