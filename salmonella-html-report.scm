@@ -488,12 +488,19 @@
 (define (rank-duration action log)
   (map (lambda (egg/duration)
          (list (car egg/duration) (prettify-time (cdr egg/duration))))
-       (sort (filter-map (lambda (entry)
-                           (let ((entry-action (report-action entry)))
-                             (and (eq? action entry-action)
-                                  (cons (report-egg entry)
-                                        (report-duration entry)))))
-                         log)
+       (sort (filter-map
+              (lambda (entry)
+                (let ((entry-action (report-action entry)))
+                  (and (eq? action entry-action)
+                       (let ((egg (symbol->string (report-egg entry))))
+                         (cons `(a (@ (href ,(make-pathname
+                                              (list ".."
+                                                    (symbol->string action))
+                                              egg
+                                              "html")))
+                                   ,egg)
+                               (report-duration entry))))))
+              log)
              (lambda (a b)
                (> (cdr a) (cdr b))))))
 
