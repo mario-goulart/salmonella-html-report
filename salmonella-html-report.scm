@@ -109,7 +109,7 @@
 ;;; Index page
 (define (render-summary log)
   (let ((blank '(literal "&nbsp;")))
-    `((h2 "Summary")
+    `((h2 (@ (id "summary")) "Summary")
       (table
        (tr (th "Installation")
            (th "Tests")
@@ -189,7 +189,7 @@
                   (log-eggs log)))))
     (if (null? warnings)
         '()
-        `((h2 "Warnings")
+        `((h2 (@ (id "warnings")) "Warnings")
           ,(zebra-table '("Egg" "Warning") warnings)))))
 
 (define (make-index log eggs)
@@ -198,23 +198,34 @@
     (page-template
      `((h1 ,title)
        (p ,date)
+
+       ;; TOC
+       (h2 "Table of contents")
+       (ul (li (a (@ (href "#summary")) "Summary"))
+           (li (a (@ (href "#warnings")) "Warnings"))
+           (li (a (@ (href "#installation-failed")) "Installation failed"))
+           (li (a (@ (href "#installation-succeeded")) "Installation succeeded"))
+           (li (a (@ (href "#skipped-eggs")) "Skipped eggs"))
+           (li (a (@ (href "#ranks")) "Ranks"))
+           (li (a (@ (href "#environment-information")) "Environment information")))
+
        ,(render-summary log)
        ,(render-warnings log)
-       (h2 "Installation failed")
+       (h2 (@ (id "installation-failed")) "Installation failed")
        ,(list-eggs eggs log 'failed)
 
-       (h2 "Installation succeeded")
+       (h2 (@ (id "installation-succeeded")) "Installation succeeded")
        ,(list-eggs eggs log)
 
        ,(let ((skipped-eggs (log-skipped-eggs log)))
           (if (null? skipped-eggs)
               '()
-              `((h2 "Skipped eggs")
+              `((h2 (@ (id "skipped-eggs")) "Skipped eggs")
                 ,(zebra-table #f (map list skipped-eggs)))))
 
        ,(ranks-report)
 
-       (h2 "Environment information")
+       (h2 (@ (id "environment-information")) "Environment information")
        (pre ,(salmonella-info log))
 
        (h3 "Total run time")
@@ -467,7 +478,7 @@
 
 ;;; Ranks
 (define (ranks-report)
-  `((h2 "Ranks")
+  `((h2 (@ (id "ranks")) "Ranks")
     (ul
      (li (a (@ (href "ranks/installation-time.html")) "Installation time"))
      (li (a (@ (href "ranks/test-time.html")) "Test time"))
