@@ -194,20 +194,24 @@
 
 (define (make-index log eggs)
   (let* ((date (seconds->string (start-time log)))
-         (title (string-append "Salmonella report")))
+         (title (string-append "Salmonella report"))
+         (skipped-eggs (log-skipped-eggs log)))
     (page-template
      `((h1 ,title)
        (p ,date)
 
        ;; TOC
        (h2 "Table of contents")
-       (ul (li (a (@ (href "#summary")) "Summary"))
-           (li (a (@ (href "#warnings")) "Warnings"))
-           (li (a (@ (href "#installation-failed")) "Installation failed"))
-           (li (a (@ (href "#installation-succeeded")) "Installation succeeded"))
-           (li (a (@ (href "#skipped-eggs")) "Skipped eggs"))
-           (li (a (@ (href "#ranks")) "Ranks"))
-           (li (a (@ (href "#environment-information")) "Environment information")))
+       (ul ,@(append
+              '((li (a (@ (href "#summary")) "Summary"))
+                (li (a (@ (href "#warnings")) "Warnings"))
+                (li (a (@ (href "#installation-failed")) "Installation failed"))
+                (li (a (@ (href "#installation-succeeded")) "Installation succeeded")))
+              (if (null? skipped-eggs)
+                  '()
+                  '((li (a (@ (href "#skipped-eggs")) "Skipped eggs"))))
+              '((li (a (@ (href "#ranks")) "Ranks"))
+                (li (a (@ (href "#environment-information")) "Environment information")))))
 
        ,(render-summary log)
        ,(render-warnings log)
@@ -217,11 +221,10 @@
        (h2 (@ (id "installation-succeeded")) "Installation succeeded")
        ,(list-eggs eggs log)
 
-       ,(let ((skipped-eggs (log-skipped-eggs log)))
-          (if (null? skipped-eggs)
-              '()
-              `((h2 (@ (id "skipped-eggs")) "Skipped eggs")
-                ,(zebra-table #f (map list skipped-eggs)))))
+       ,(if (null? skipped-eggs)
+            '()
+            `((h2 (@ (id "skipped-eggs")) "Skipped eggs")
+              ,(zebra-table #f (map list skipped-eggs))))
 
        ,(ranks-report)
 
