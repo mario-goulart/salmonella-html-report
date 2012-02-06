@@ -145,23 +145,50 @@
                 ("Skipped" ,(length (log-skipped-eggs log))))))
         )))))
 
-(define (list-eggs eggs log #!optional failed?)
+
+(define (list-eggs/installation-failed eggs log)
   (zebra-table
-   (append
-    '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies")
-    (if failed?
-        '("Broken dependencies")
-        '())
-    (if failed?
-        '()
-        '("Test")))
-   (map (lambda (egg)
-          (egg-summary-line egg log failed?))
-        ((if failed? remove filter)
-         (lambda (egg)
-           (let ((status (install-status egg log)))
-             (and status (zero? status))))
-         eggs))))
+    '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Broken dependencies")
+    (map (lambda (egg)
+           (egg-summary-line egg log #t))
+         (remove (lambda (egg)
+                   (let ((status (install-status egg log)))
+                     (and status (zero? status))))
+                 eggs))))
+
+
+(define (list-eggs/installation-succeeded eggs log)
+  (define (list-eggs eggs)
+    (zebra-table
+     '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Tests")
+     (map (lambda (egg)
+            (egg-summary-line egg log #t))
+          eggs)))
+  `((h3 (@ (id "installation-succeeded-test-failed")) "Tests failed")
+    ,(list-eggs (filter (lambda (egg)
+                          (let ((status (install-status egg log))
+                                (test-status (test-status egg log)))
+                            (and status
+                                 (zero? status)
+                                 (> test-status 0))))
+                        eggs))
+    (h3 (@ (id "installation-succeeded-test-succeeded")) "Tests succeeded")
+    ,(list-eggs (filter (lambda (egg)
+                          (let ((status (install-status egg log))
+                                (test-status (test-status egg log)))
+                            (and status
+                                 (zero? status)
+                                 (zero? test-status))))
+                        eggs))
+    (h3 (@ (id "installation-succeeded-no-test")) "No tests")
+    ,(list-eggs (filter (lambda (egg)
+                          (let ((status (install-status egg log))
+                                (test-status (test-status egg log)))
+                            (and status
+                                 (zero? status)
+                                 (eq? test-status -1))))
+                        eggs))))
+
 
 (define (render-warnings log)
   (let ((warnings
@@ -206,7 +233,10 @@
               '((li (a (@ (href "#summary")) "Summary"))
                 (li (a (@ (href "#warnings")) "Warnings"))
                 (li (a (@ (href "#installation-failed")) "Installation failed"))
-                (li (a (@ (href "#installation-succeeded")) "Installation succeeded")))
+                (li `((a (@ (href "#installation-succeeded")) "Installation succeeded")
+                      (ul (li (a (@ (href "#installation-succeeded-test-failed")) "Test failed"))
+                          (li (a (@ (href "#installation-succeeded-test-succeeded")) "Test succeeded"))
+                          (li (a (@ (href "#installation-succeeded-no-test")) "No test"))))))
               (if (null? skipped-eggs)
                   '()
                   '((li (a (@ (href "#skipped-eggs")) "Skipped eggs"))))
@@ -216,10 +246,10 @@
        ,(render-summary log)
        ,(render-warnings log)
        (h2 (@ (id "installation-failed")) "Installation failed")
-       ,(list-eggs eggs log 'failed)
+       ,(list-eggs/installation-failed eggs log)
 
        (h2 (@ (id "installation-succeeded")) "Installation succeeded")
-       ,(list-eggs eggs log)
+       ,(list-eggs/installation-succeeded eggs log)
 
        ,(if (null? skipped-eggs)
             '()
