@@ -285,7 +285,11 @@
 ;;; Egg test report page
 (define (egg-test-report egg log)
   (page-template
-   `((h1 "Test output for " ,egg)
+   `((h1 "Test output for " ,egg " ["
+         ,(if (zero? (test-status egg log))
+              "ok"
+              "fail")
+         "]")
      (p "Testing time: "
         ,(prettify-time (inexact->exact (test-duration egg log))))
      (pre ,(test-message egg log)))
