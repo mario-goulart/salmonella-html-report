@@ -162,7 +162,7 @@
     (zebra-table
      '("Egg" "Version" "Doc" "Dependencies" "Reverse dependencies" "Tests")
      (map (lambda (egg)
-            (egg-summary-line egg log #t))
+            (egg-summary-line egg log #f))
           eggs)))
   `((h3 (@ (id "installation-succeeded-test-failed")) "Tests failed")
     ,(list-eggs (filter (lambda (egg)
