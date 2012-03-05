@@ -98,12 +98,13 @@
       )))
 
 
-(define (sxml-log->html sxml output-file)
-  (with-output-to-file output-file
-    (lambda ()
-      (let* ((rules `((literal *preorder* . ,(lambda (t b) b))
-                      . ,universal-conversion-rules*)))
-      (SRV:send-reply (pre-post-order* sxml rules))))))
+(define sxml-log->html
+  (let ((rules `((literal *preorder* . ,(lambda (t b) b))
+                 . ,universal-conversion-rules*)))
+    (lambda (sxml output-file)
+      (with-output-to-file output-file
+        (lambda ()
+          (SRV:send-reply (pre-post-order* sxml rules)))))))
 
 
 ;;; Index page
