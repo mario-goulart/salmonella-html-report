@@ -272,7 +272,7 @@
   (page-template
    `((h1 "Installation output for " ,egg)
      ,(cond ((not (zero? (fetch-status egg log)))
-             '(p "Fetching error"))
+             '(p "Fetch error"))
             ((not (meta-data egg log))
              '(p "Error reading .meta file"))
             (else
