@@ -501,8 +501,9 @@
 
 ;;; GPL infection
 (define (gpl? license)
-  (and license (or (string-prefix-ci? "GPL" license)
-                   (string-prefix-ci? "AGPL" license))))
+  (let ((license (->string license)))
+    (and license (or (string-prefix-ci? "GPL" license)
+                     (string-prefix-ci? "AGPL" license)))))
 
 (define (gpl-dependencies egg log)
   (and (not (gpl? (egg-license egg log)))
