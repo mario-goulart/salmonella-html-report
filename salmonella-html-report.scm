@@ -27,25 +27,26 @@
   (when *verbose*
     (print "=== " msg)))
 
-(define (menu egg active)
+(define (menu egg log active)
   (let ((locs `((summary        . "Report summary")
                 (install        . "Installation report")
                 (test           . "Test report")
                 (dep-graphs     . "Dependencies graphs")
-                (rev-dep-graphs . "Reverse dependencies graphs")
-                (doc            . "Documentation"))))
+                (rev-dep-graphs . "Reverse dependencies graphs"))))
     `(ul (@ (id "salmonella-menu"))
          ,@(filter-map
             (lambda (item)
               (let ((path (car item))
                     (label (cdr item)))
-                `(li ,(if (eq? active path)
-                          label
-                          `(a (@ (href ,(case path
-                                          ((summary) "../")
-                                          ((doc) (conc egg-doc-uri "/" egg))
-                                          (else (conc "../" path "/" egg ".html")))))
-                              ,label)))))
+                `(li ,(cond ((eq? active path)
+                             label)
+                            ((eq? path 'test)
+                             (link-egg-test egg log text: "Test report" relative-path: ".."))
+                            (else
+                             `(a (@ (href ,(if (eq? path 'summary)
+                                               "../"
+                                               (conc "../" path "/" egg ".html"))))
+                                 ,label))))))
             locs))))
 
 ;;; SXML utils
@@ -88,14 +89,19 @@
             ,(or text egg)))
       ""))
 
-(define (link-egg-test egg log #!optional text)
+(define (link-egg-test egg log #!key text relative-path)
   (let ((status (test-status egg log)))
     (if (and status (not (= status -1)))
         (let ((egg (symbol->string egg)))
-          `(a (@ (href ,(make-pathname "test" egg "html")))
+          `(a (@ (href ,(make-pathname
+                         (if relative-path
+                             (list relative-path "test")
+                             "test")
+                         egg
+                         "html")))
               ,(if (zero? status)
-                   "ok"
-                   "fail")))
+                   (or text "ok")
+                   (or text "fail"))))
         "")))
 
 (define (link-egg-install egg #!optional text)
@@ -306,8 +312,8 @@
 ;;; Egg installation report page
 (define (egg-installation-report egg log)
   (page-template
-   `((h1 "Installation output for " ,egg)
-     ,(menu egg 'install)
+   `((h1 "Installation output for " ,(link-egg-doc egg log))
+     ,(menu egg log 'install)
      ,(cond ((not (zero? (fetch-status egg log)))
              '(p "Fetch error"))
             ((not (meta-data egg log))
@@ -323,12 +329,12 @@
 ;;; Egg test report page
 (define (egg-test-report egg log)
   (page-template
-   `((h1 "Test output for " ,egg " ["
+   `((h1 "Test output for " ,(link-egg-doc egg log) " ["
          ,(if (zero? (test-status egg log))
               "ok"
               "fail")
          "]")
-     ,(menu egg 'test)
+     ,(menu egg log 'test)
      (p "Testing time: "
         ,(prettify-time (inexact->exact (test-duration egg log))))
      (pre ,(test-message egg log)))
@@ -535,9 +541,9 @@
 (define (deps-report egg log reverse?)
   (page-template
    `(,(if reverse?
-          `(h1 "Reverse dependencies for " ,egg)
-          `(h1 "Dependencies for " ,egg))
-     ,(menu egg (if reverse? 'rev-dep-graphs 'dep-graphs))
+          `(h1 "Reverse dependencies for " ,(link-egg-doc egg log))
+          `(h1 "Dependencies for " ,(link-egg-doc egg log)))
+     ,(menu egg log (if reverse? 'rev-dep-graphs 'dep-graphs))
      ,(let ((all-deps (all-egg-dependencies egg reverse?)))
         (if (circular-dependency? all-deps)
             `((p "This egg (or some egg "
