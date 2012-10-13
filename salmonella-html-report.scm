@@ -214,7 +214,14 @@
                                        (string-intersperse
                                         (map ->string gpl-deps)
                                         ", "))))))
-                  (log-eggs log)))))
+                  (log-eggs log))
+
+                 (map (lambda (egg/circ)
+                        (let ((egg (car egg/circ))
+                              (circular-dep (cdr egg/circ)))
+                          (list egg
+                                (conc egg " (or some egg it depends on) contains circular dependencies"))))
+                      *circular-dependencies*))))
     (if (null? warnings)
         '()
         `((h2 (@ (id "warnings")) "Warnings")
@@ -388,15 +395,52 @@
 (define (direct-dependency? egg1 egg2 log)
   (and (memq egg2 (egg-dependencies egg1 log)) #t))
 
-(define (all-dependencies egg log #!optional reverse?)
-  (define (get-deps egg)
-    (let ((deps (if reverse?
-                    (reverse-dependencies egg log)
-                    (egg-dependencies egg log))))
-      (if (null? deps)
-          '()
-          (append deps (map get-deps deps)))))
-  (delete-duplicates (flatten (get-deps egg))))
+(define (all-dependencies root-egg log #!optional reverse?)
+  ;; Returns a list of [reverse] dependencies for the given egg or a
+  ;; circular-dependency object if a circular dependency is detected.
+  ;; This procedure is just a helper, not intented to be used by
+  ;; regular code.  Use `all-egg-dependencies' instead.
+  (let ((visited '()))
+    (define (get-deps egg)
+      (let ((deps (if reverse?
+                      (reverse-dependencies egg log)
+                      (egg-dependencies egg log))))
+        (cond ((null? deps)
+               '())
+              ((find (lambda (dep)
+                       (member (cons dep egg) visited))
+                     deps)
+               => (lambda (circular)
+                    (list (make-circular-dependency egg circular))))
+              (else (for-each (lambda (dep)
+                                (set! visited (cons (cons egg dep) visited)))
+                              deps)
+                    (append deps (map get-deps deps))))))
+    (let ((deps (flatten (get-deps root-egg))))
+      (cond ((find circular-dependency? deps) => identity)
+            (else (delete-duplicates deps))))))
+
+(define-record circular-dependency egg1 egg2)
+
+(define *eggs/dependencies* '()) ;; alist mapping dependencies '((egg1 . egg2) ...)
+(define *eggs/reverse-dependencies* '()) ;; alist mapping reverse dependencies '((egg1 . egg2) ...)
+(define *circular-dependencies* '()) ;; alist mapping eggs to circular-dependecy objects
+(define *circular-reverse-dependencies* '()) ;; alist mapping eggs to circular-dependecy objects
+
+(define (all-egg-dependencies egg reverse?)
+  (or (if reverse?
+          (alist-ref egg *eggs/reverse-dependencies*)
+          (alist-ref egg *eggs/dependencies*))
+      (if reverse?
+          (alist-ref egg *circular-reverse-dependencies*)
+          (alist-ref egg *circular-dependencies*))))
+
+(define (egg-has-circular-dependencies? egg reverse?)
+  (and
+   (if reverse?
+       (alist-ref egg *circular-reverse-dependencies*)
+       (alist-ref egg *circular-dependencies*))
+   #t))
 
 (define (egg-dependencies->dot egg log dep-graphs-dir #!key reverse?)
   (let ((links '())
@@ -457,39 +501,58 @@
                                                  )))))
                (td "Indirect connection")))))
 
-(define (egg-dependencies-report egg log)
+(define (deps-report egg log reverse?)
   (page-template
-   `((h1 "Dependencies for " ,egg)
-     ,(let* ((total-deps (length (all-dependencies egg log)))
-             (num-direct-deps (length (egg-dependencies egg log)))
-             (num-indirect-deps (- total-deps num-direct-deps)))
-        `(p ,(case total-deps
-               ((0) (conc egg " has no dependencies."))
-               ((1) (conc egg " has 1 dependency."))
-               (else (conc egg " has " total-deps " dependencies "
-                           "(" num-direct-deps " direct, "
-                           num-indirect-deps " indirect)")))))
-     (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
-                (alt ,(conc "Dependencies graph for " egg)))))
-     ,(color-legend))
-   title: (conc egg ": Dependencies")))
+   `(,(if reverse?
+          `(h1 "Reverse dependencies for " ,egg)
+          `(h1 "Dependencies for " ,egg))
+     ,(let ((all-deps (all-egg-dependencies egg reverse?)))
+        (if (circular-dependency? all-deps)
+            `((p "This egg (or some egg "
+                 ,(if reverse?
+                      "that depends on it"
+                      "it depends on")
+                 ") contains circular dependencies.")
+              ,(let ((egg1 (circular-dependency-egg1 all-deps))
+                     (egg2 (circular-dependency-egg2 all-deps)))
+                 `(p (code ,egg1) " depends on " (code ,egg2) " and "
+                     (code ,egg2) " depends on " (code ,egg1) ".")))
+            (let* ((total-deps (length all-deps))
+                   (num-direct-deps
+                    (length (if reverse?
+                                (reverse-dependencies egg log)
+                                (egg-dependencies egg log))))
+                   (num-indirect-deps (- total-deps num-direct-deps)))
+              `((p ,(case total-deps
+                      ((0) (if reverse?
+                               (conc "No egg depends on " egg ".")
+                               (conc egg " has no dependencies.")))
+                      ((1) (if reverse?
+                               (conc "1 egg depends on " egg ".")
+                               (conc egg " has 1 dependency.")))
+                      (else (if reverse?
+                                (conc total-deps " eggs depend on " egg
+                                      " (" num-direct-deps " direct, "
+                                      num-indirect-deps " indirect)")
+                                (conc egg " has " total-deps " dependencies "
+                                      "(" num-direct-deps " direct, "
+                                      num-indirect-deps " indirect)")))))
+                (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
+                           (alt ,(conc (if reverse? "Reverse dependencies" "Dependencies")
+                                       " graph for " egg)))))
+                ,(color-legend))))))
+   title: (conc egg ": "
+                (if reverse?
+                    "Reverse dependencies"
+                    "Dependencies"))))
+
+
+
+(define (egg-dependencies-report egg log)
+  (deps-report egg log #f))
 
 (define (egg-reverse-dependencies-report egg log)
-  (page-template
-   `((h1 "Reverse dependencies for " ,egg)
-     ,(let* ((total-deps (length (all-dependencies egg log 'reverse)))
-             (num-direct-deps (length (reverse-dependencies egg log)))
-             (num-indirect-deps (- total-deps num-direct-deps)))
-        `(p ,(case total-deps
-               ((0) (conc "No egg depends on " egg "."))
-               ((1) (conc "1 egg depends on " egg "."))
-               (else (conc total-deps " eggs depend on " egg
-                           " (" num-direct-deps " direct, "
-                           num-indirect-deps " indirect)")))))
-     (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
-                (alt ,(conc "Reverse dependencies graph for " egg)))))
-     ,(color-legend))
-   title: (conc egg ": Reverse dependencies")))
+  (deps-report egg log #t))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
@@ -547,6 +610,7 @@
 (define (rank-page-nav)
   '(p (a (@ (href "..")) "Report summary")))
 
+
 (define (rank-installation-time log)
   (page-template
    `((h1 "Installation time rank")
@@ -568,6 +632,16 @@
 
 
 (define (rank-dependencies log graphs-disabled? #!optional reverse?)
+  (define (link-dep egg)
+    (if graphs-disabled?
+        egg
+        `(a (@ (href ,(make-pathname (list ".."
+                                           (if reverse?
+                                               "rev-dep-graphs"
+                                               "dep-graphs"))
+                                     (symbol->string egg)
+                                     "html")))
+            ,egg)))
   (page-template
    `((h1 ,(if reverse?
               "Reverse dependencies rank"
@@ -580,23 +654,32 @@
          "Percentage of the total number of eggs")
        (let* ((all-eggs (log-eggs log))
               (num-eggs (length all-eggs)))
-         (sort (map (lambda (egg)
-                      (let ((num-deps (length (all-dependencies egg log reverse?))))
-                        (list (if graphs-disabled?
-                                  egg
-                                  `(a (@ (href
-                                          ,(make-pathname (list ".."
-                                                                (if reverse?
-                                                                    "rev-dep-graphs"
-                                                                    "dep-graphs"))
-                                                          (symbol->string egg)
-                                                          "html")))
-                                      ,egg))
-                              num-deps
-                              (conc (inexact->exact (round (* (/ num-deps num-eggs) 100))) "%"))))
-                    all-eggs)
-               (lambda (a b)
-                 (> (cadr a) (cadr b)))))))
+         (sort
+          (map (lambda (egg)
+                 (let* ((all-deps (all-egg-dependencies egg reverse?))
+                        (num-deps (length all-deps)))
+                   (list (link-dep egg)
+                         num-deps
+                         (conc (inexact->exact (round (* (/ num-deps num-eggs) 100))) "%"))))
+               (remove (lambda (egg)
+                         (egg-has-circular-dependencies? egg reverse?))
+                       all-eggs))
+          (lambda (a b)
+            (> (cadr a) (cadr b))))))
+
+     ,(if (null? (if reverse?
+                     *circular-reverse-dependencies*
+                     *circular-dependencies*))
+          '()
+          `((h2 "Eggs with circular dependencies"
+                ,(if reverse?
+                     " in their reverse depedencies"
+                     ""))
+            (ul ,@(map (lambda (egg)
+                         `(li ,(link-dep egg)))
+                       (map car (if reverse?
+                                    *circular-reverse-dependencies*
+                                    *circular-dependencies*)))))))
    title: (if reverse?
               "Reverse dependencies rank"
               "Dependencies rank")))
@@ -661,6 +744,26 @@ EOF
       (let* ((log (read-log-file log-file))
              (eggs (sort-eggs (log-eggs log))))
 
+
+        ;; Generate dependencies data
+        (info "Generating dependencies data")
+        (for-each (lambda (egg)
+                    (let ((deps (all-dependencies egg log)))
+                      (if (circular-dependency? deps)
+                          (set! *circular-dependencies*
+                                (cons (cons egg deps) *circular-dependencies*))
+                          (set! *eggs/dependencies*
+                                (cons (cons egg deps) *eggs/dependencies*)))))
+                  eggs)
+        (for-each (lambda (egg)
+                    (let ((deps (all-dependencies egg log 'reverse)))
+                      (if (circular-dependency? deps)
+                          (set! *circular-reverse-dependencies*
+                                (cons (cons egg deps) *circular-reverse-dependencies*))
+                          (set! *eggs/reverse-dependencies*
+                                (cons (cons egg deps) *eggs/reverse-dependencies*)))))
+                  eggs)
+
         ;; Generate the index page
         (info "Generating the index page")
         (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
@@ -692,7 +795,8 @@ EOF
         (when (and dot-installed? (not disable-graphs?))
           (for-each (lambda (egg)
                       (info (conc "Generating reverse dependencies graph for " egg))
-                      (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t)
+                      (unless (egg-has-circular-dependencies? egg 'reverse)
+                        (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t))
                       (sxml-log->html
                        (egg-reverse-dependencies-report egg log)
                        (make-pathname rev-dep-graphs-dir
@@ -700,7 +804,8 @@ EOF
                                       "html"))
 
                       (info (conc "Generating dependencies graph for " egg))
-                      (egg-dependencies->dot egg log dep-graphs-dir)
+                      (unless (egg-has-circular-dependencies? egg #f)
+                        (egg-dependencies->dot egg log dep-graphs-dir))
                       (sxml-log->html
                        (egg-dependencies-report egg log)
                        (make-pathname dep-graphs-dir
