@@ -41,7 +41,10 @@
                 `(li ,(cond ((eq? active path)
                              label)
                             ((eq? path 'test)
-                             (link-egg-test egg log text: "Test report" relative-path: ".."))
+                             (link-egg-test egg log
+                                            text: "Test report"
+                                            relative-path: ".."
+                                            text-no-test: "Test report"))
                             (else
                              `(a (@ (href ,(if (eq? path 'summary)
                                                "../"
@@ -89,7 +92,7 @@
             ,(or text egg)))
       ""))
 
-(define (link-egg-test egg log #!key text relative-path)
+(define (link-egg-test egg log #!key text relative-path text-no-test)
   (let ((status (test-status egg log)))
     (if (and status (not (= status -1)))
         (let ((egg (symbol->string egg)))
@@ -102,7 +105,7 @@
               ,(if (zero? status)
                    (or text "ok")
                    (or text "fail"))))
-        "")))
+        (or text-no-test ""))))
 
 (define (link-egg-install egg #!optional text)
   (let ((egg (symbol->string egg)))
