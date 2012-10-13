@@ -27,6 +27,27 @@
   (when *verbose*
     (print "=== " msg)))
 
+(define (menu egg active)
+  (let ((locs `((summary        . "Report summary")
+                (install        . "Installation report")
+                (test           . "Test report")
+                (dep-graphs     . "Dependencies graphs")
+                (rev-dep-graphs . "Reverse dependencies graphs")
+                (doc            . "Documentation"))))
+    `(ul (@ (id "salmonella-menu"))
+         ,@(filter-map
+            (lambda (item)
+              (let ((path (car item))
+                    (label (cdr item)))
+                `(li ,(if (eq? active path)
+                          label
+                          `(a (@ (href ,(case path
+                                          ((summary) "../")
+                                          ((doc) (conc egg-doc-uri "/" egg))
+                                          (else (conc "../" path "/" egg ".html")))))
+                              ,label)))))
+            locs))))
+
 ;;; SXML utils
 (define (page-template content #!key title)
   `((literal
@@ -38,7 +59,9 @@
            (title ,title)
            (link (@ (rel "stylesheet")
                     (href ,*page-css*)
-                    (type "text/css"))))
+                    (type "text/css")))
+           (style (@ (type "text/css"))
+             "#salmonella-menu li { display: inline; list-style-type: none; padding-right: 20px; }"))
           (body
            (div (@ (id "content"))
                 ,content)))))
@@ -278,6 +301,7 @@
 (define (egg-installation-report egg log)
   (page-template
    `((h1 "Installation output for " ,egg)
+     ,(menu egg 'install)
      ,(cond ((not (zero? (fetch-status egg log)))
              '(p "Fetch error"))
             ((not (meta-data egg log))
@@ -298,6 +322,7 @@
               "ok"
               "fail")
          "]")
+     ,(menu egg 'test)
      (p "Testing time: "
         ,(prettify-time (inexact->exact (test-duration egg log))))
      (pre ,(test-message egg log)))
@@ -506,6 +531,7 @@
    `(,(if reverse?
           `(h1 "Reverse dependencies for " ,egg)
           `(h1 "Dependencies for " ,egg))
+     ,(menu egg (if reverse? 'rev-dep-graphs 'dep-graphs))
      ,(let ((all-deps (all-egg-dependencies egg reverse?)))
         (if (circular-dependency? all-deps)
             `((p "This egg (or some egg "
