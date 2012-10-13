@@ -312,7 +312,11 @@
 ;;; Egg installation report page
 (define (egg-installation-report egg log)
   (page-template
-   `((h1 "Installation output for " ,(link-egg-doc egg log))
+   `((h1 "Installation output for " ,(link-egg-doc egg log) " "
+         ,(let ((status (install-status egg log)))
+            (if (and status (zero? status))
+                "[ok]"
+                "[fail]")))
      ,(menu egg log 'install)
      ,(cond ((not (zero? (fetch-status egg log)))
              '(p "Fetch error"))
