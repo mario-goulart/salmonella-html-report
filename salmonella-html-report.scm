@@ -85,12 +85,14 @@
             rows))))
 
 
-(define (link-egg-doc egg log #!optional text)
+(define (link-egg-doc egg log #!optional text omit-text-if-no-doc?)
   (if (doc-exists? egg log)
       (let ((egg (symbol->string egg)))
         `(a (@ (href ,(make-pathname egg-doc-uri egg)))
             ,(or text egg)))
-      ""))
+      (if omit-text-if-no-doc?
+          ""
+          egg)))
 
 (define (link-egg-test egg log #!key text relative-path text-no-test)
   (let ((status (test-status egg log)))
@@ -118,7 +120,7 @@
     (append
      `((a (@ (href ,(make-pathname "install" str-egg "html"))) ,egg)
        ,(egg-version egg log)
-       ,(link-egg-doc egg log "egg page")
+       ,(link-egg-doc egg log "egg page" 'omit-text-if-no-doc)
        (a (@ (href ,(make-pathname "dep-graphs" str-egg "html"))) "dependencies")
        (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg "html")))
           "reverse dependencies"))
