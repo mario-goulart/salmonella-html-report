@@ -324,7 +324,7 @@
                 "[fail]")))
      ,(menu egg log 'install)
      ,(cond ((not (zero? (fetch-status egg log)))
-             '(p "Fetch error"))
+             `(pre ,(fetch-message egg log)))
             ((not (meta-data egg log))
              '(p "Error reading .meta file"))
             (else
