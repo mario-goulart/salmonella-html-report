@@ -304,7 +304,7 @@
        (h2 (@ (id "environment-information")) "Environment information")
        (pre ,(salmonella-info log))
 
-       (h3 "Total run time")
+       (h2 "Total run time")
        ,(prettify-time (inexact->exact (total-time log)))
 
        (div (@ (style "text-align: center; font-size: small;"))
