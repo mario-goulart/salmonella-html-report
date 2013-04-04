@@ -284,7 +284,8 @@
                   '()
                   '((li (a (@ (href "#skipped-eggs")) "Skipped eggs"))))
               '((li (a (@ (href "#ranks")) "Ranks"))
-                (li (a (@ (href "#environment-information")) "Environment information")))))
+                (li (a (@ (href "#environment-information")) "Environment information"))
+                (li (a (@ (href "#total-run-time")) "Total run time")))))
 
        ,(render-summary log)
        ,(render-warnings log)
@@ -304,7 +305,7 @@
        (h2 (@ (id "environment-information")) "Environment information")
        (pre ,(salmonella-info log))
 
-       (h2 "Total run time")
+       (h2 (@ (id "total-run-time")) "Total run time")
        ,(prettify-time (inexact->exact (total-time log)))
 
        (div (@ (style "text-align: center; font-size: small;"))
