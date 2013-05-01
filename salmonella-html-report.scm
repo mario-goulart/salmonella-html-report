@@ -358,10 +358,11 @@
   (print "Warning: the external program `dot' has not been found. "
          "[Reverse] dependencies graphs are not going to be generated."))
 
-(define (dot->png dot-file)
+(define (dot->image dot-file graphics-format)
   (when dot-installed?
-    (system (sprintf "dot -Tpng -o ~A ~A  2>&1"
-                     (pathname-replace-extension dot-file "png")
+    (system (sprintf "dot -T~a -o ~A ~A  2>&1"
+                     graphics-format
+                     (pathname-replace-extension dot-file graphics-format)
                      dot-file))))
 
 (define (link->dot egg link log reverse?)
@@ -489,7 +490,7 @@
        (alist-ref egg *circular-dependencies*))
    #t))
 
-(define (egg-dependencies->dot egg log dep-graphs-dir #!key reverse?)
+(define (egg-dependencies->dot egg log dep-graphs-dir graphics-format #!key reverse?)
   (let ((links '())
         (labels '()))
 
@@ -520,7 +521,7 @@
       (with-output-to-file dot-file
         (lambda ()
           (print (dot-graph egg labels links log reverse?))))
-      (dot->png dot-file))))
+      (dot->image dot-file graphics-format))))
 
 (define (color-legend)
   `((h4 "Legend")
@@ -548,7 +549,7 @@
                                                  )))))
                (td "Indirect connection")))))
 
-(define (deps-report egg log reverse?)
+(define (deps-report egg graphics-format log reverse?)
   (page-template
    `(,(if reverse?
           `(h1 "Reverse dependencies for " ,(link-egg-doc egg log))
@@ -585,7 +586,7 @@
                                 (conc egg " has " total-deps " dependencies "
                                       "(" num-direct-deps " direct, "
                                       num-indirect-deps " indirect)")))))
-                (p (img (@ (src ,(make-pathname #f (symbol->string egg) "png"))
+                (p (img (@ (src ,(make-pathname #f (symbol->string egg) graphics-format))
                            (alt ,(conc (if reverse? "Reverse dependencies" "Dependencies")
                                        " graph for " egg)))))
                 ,(color-legend))))))
@@ -596,11 +597,11 @@
 
 
 
-(define (egg-dependencies-report egg log)
-  (deps-report egg log #f))
+(define (egg-dependencies-report egg graphics-format log)
+  (deps-report egg graphics-format log #f))
 
-(define (egg-reverse-dependencies-report egg log)
-  (deps-report egg log #t))
+(define (egg-reverse-dependencies-report egg graphics-format log)
+  (deps-report egg graphics-format log #t))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
@@ -737,7 +738,20 @@
 (define (usage #!optional exit-code)
   (let* ((this-program (pathname-strip-directory (program-name)))
          (msg #<#EOF
-Usage: #this-program [ --disable-graphs ] [ --css-uri=<uri> ] [ --verbose ] <salmonella log file> <out dir>
+Usage: #this-program [ <options> ] <salmonella log file> <out dir>
+
+--verbose
+  Verbose output
+
+--disable-graphs
+  Disable generation of dependency graphs
+
+--css-uri=<uri>
+  URI of the CSS file to be used in the generatated pages
+
+--graphics-format=<type>
+  Format of the [reverse] dependency graph images.  The supported ones
+  are those supported by dot (GraphViz).
 EOF
 ))
     (with-output-to-port
@@ -752,6 +766,7 @@ EOF
 
 (let* ((args (command-line-arguments))
        (disable-graphs? (and (member "--disable-graphs" args) #t))
+       (graphics-format (or (cmd-line-arg '--graphics-format args) "svg"))
        (css (cmd-line-arg '--css-uri args)))
 
   (when (< (length args) 2)
@@ -844,18 +859,18 @@ EOF
           (for-each (lambda (egg)
                       (info (conc "Generating reverse dependencies graph for " egg))
                       (unless (egg-has-circular-dependencies? egg 'reverse)
-                        (egg-dependencies->dot egg log rev-dep-graphs-dir reverse?: #t))
+                        (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format reverse?: #t))
                       (sxml-log->html
-                       (egg-reverse-dependencies-report egg log)
+                       (egg-reverse-dependencies-report egg graphics-format log)
                        (make-pathname rev-dep-graphs-dir
                                       (symbol->string egg)
                                       "html"))
 
                       (info (conc "Generating dependencies graph for " egg))
                       (unless (egg-has-circular-dependencies? egg #f)
-                        (egg-dependencies->dot egg log dep-graphs-dir))
+                        (egg-dependencies->dot egg log dep-graphs-dir graphics-format))
                       (sxml-log->html
-                       (egg-dependencies-report egg log)
+                       (egg-dependencies-report egg graphics-format log)
                        (make-pathname dep-graphs-dir
                                       (symbol->string egg)
                                       "html")))
