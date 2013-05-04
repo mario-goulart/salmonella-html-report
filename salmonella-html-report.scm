@@ -7,6 +7,47 @@
 (define *page-css* "http://wiki.call-cc.org/chicken.css")
 
 
+;;; Parameters
+
+;; Compression
+(define compress-html? (make-parameter #f))
+(define html-compressor (make-parameter "gzip"))
+(define html-compressor-args (make-parameter "-9"))
+(define compressed-html-extension (make-parameter "htmlz"))
+(define compress-graphics? (make-parameter #f))
+(define graphics-compressor (make-parameter "gzip"))
+(define graphics-compressor-args (make-parameter "-9"))
+(define compressed-graphics-extension (make-parameter "svgz"))
+
+;;; Compression
+(define (maybe-compress-html file)
+  (when (compress-html?)
+    (system* "~a ~a -c ~a > ~a"
+             (html-compressor)
+             (html-compressor-args)
+             file
+             (pathname-replace-extension file (compressed-html-extension)))
+    (delete-file file)))
+
+(define (maybe-compress-graphics file)
+  (when (compress-graphics?)
+    (system* "~a ~a -c ~a > ~a"
+             (graphics-compressor)
+             (graphics-compressor-args)
+             file
+             (pathname-replace-extension file (compressed-graphics-extension)))
+    (delete-file file)))
+
+(define (html-extension)
+  (if (compress-html?)
+      (compressed-html-extension)
+      "html"))
+
+(define (graphics-extension graphics-format)
+  (if (compress-graphics?)
+      (compressed-graphics-extension)
+      graphics-format))
+
 ;;; Misc
 (define (cmd-line-arg option args)
   ;; Returns the argument associated to the command line option OPTION
@@ -48,7 +89,7 @@
                             (else
                              `(a (@ (href ,(if (eq? path 'summary)
                                                "../"
-                                               (conc "../" path "/" egg ".html"))))
+                                               (conc "../" path "/" egg "." (html-extension)))))
                                  ,label))))))
             locs))))
 
@@ -103,7 +144,7 @@
                              (list relative-path "test")
                              "test")
                          egg
-                         "html")))
+                         (html-extension))))
               ,(if (zero? status)
                    (or text "ok")
                    (or text "fail"))))
@@ -111,18 +152,18 @@
 
 (define (link-egg-install egg #!optional text)
   (let ((egg (symbol->string egg)))
-    `(a (@ (href ,(make-pathname "install" egg "html")))
+    `(a (@ (href ,(make-pathname "install" egg (html-extension))))
         ,(or text egg))))
 
 (define (egg-summary-line egg log #!optional failed?)
   (let ((str-egg (symbol->string egg))
         (broken-deps (broken-dependencies egg log)))
     (append
-     `((a (@ (href ,(make-pathname "install" str-egg "html"))) ,egg)
+     `((a (@ (href ,(make-pathname "install" str-egg (html-extension)))) ,egg)
        ,(egg-version egg log)
        ,(link-egg-doc egg log "egg page" 'omit-text-if-no-doc)
-       (a (@ (href ,(make-pathname "dep-graphs" str-egg "html"))) "dependencies")
-       (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg "html")))
+       (a (@ (href ,(make-pathname "dep-graphs" str-egg (html-extension)))) "dependencies")
+       (a (@ (href ,(make-pathname "rev-dep-graphs" str-egg (html-extension))))
           "reverse dependencies"))
      (if failed?
          (if (null? broken-deps)
@@ -139,7 +180,8 @@
     (lambda (sxml output-file)
       (with-output-to-file output-file
         (lambda ()
-          (SRV:send-reply (pre-post-order* sxml rules)))))))
+          (SRV:send-reply (pre-post-order* sxml rules))))
+      (maybe-compress-html output-file))))
 
 
 ;;; Index page
@@ -359,11 +401,14 @@
          "[Reverse] dependencies graphs are not going to be generated."))
 
 (define (dot->image dot-file graphics-format)
-  (when dot-installed?
-    (system (sprintf "dot -T~a -o ~A ~A  2>&1"
-                     graphics-format
-                     (pathname-replace-extension dot-file graphics-format)
-                     dot-file))))
+  (let ((graphics-file
+         (pathname-replace-extension dot-file graphics-format)))
+    (when dot-installed?
+      (system* (sprintf "dot -T~a -o ~A ~A  2>&1"
+                        graphics-format
+                        graphics-file
+                        dot-file)))
+    (maybe-compress-graphics graphics-file)))
 
 (define (link->dot egg link log reverse?)
   (let* ((orig (car link))
@@ -586,7 +631,9 @@
                                 (conc egg " has " total-deps " dependencies "
                                       "(" num-direct-deps " direct, "
                                       num-indirect-deps " indirect)")))))
-                (p (img (@ (src ,(make-pathname #f (symbol->string egg) graphics-format))
+                (p (img (@ (src ,(make-pathname #f
+                                                (symbol->string egg)
+                                                (graphics-extension graphics-format)))
                            (alt ,(conc (if reverse? "Reverse dependencies" "Dependencies")
                                        " graph for " egg)))))
                 ,(color-legend))))))
@@ -631,10 +678,14 @@
 (define (ranks-report)
   `((h2 (@ (id "ranks")) "Ranks")
     (ul
-     (li (a (@ (href "ranks/installation-time.html")) "Installation time"))
-     (li (a (@ (href "ranks/test-time.html")) "Test time"))
-     (li (a (@ (href "ranks/deps.html")) "Dependencies"))
-     (li (a (@ (href "ranks/rev-deps.html")) "Reverse dependencies")))))
+     (li (a (@ (href ,(make-pathname "ranks" "installation-time" (html-extension))))
+            "Installation time"))
+     (li (a (@ (href ,(make-pathname "ranks" "test-time" (html-extension))))
+            "Test time"))
+     (li (a (@ (href ,(make-pathname "ranks" "deps" (html-extension))))
+            "Dependencies"))
+     (li (a (@ (href ,(make-pathname "ranks" "rev-deps" (html-extension))))
+            "Reverse dependencies")))))
 
 (define (rank-duration action log)
   (map (lambda (egg/duration)
@@ -648,7 +699,7 @@
                                               (list ".."
                                                     (symbol->string action))
                                               egg
-                                              "html")))
+                                              (html-extension))))
                                    ,egg)
                                (report-duration entry))))))
               log)
@@ -689,7 +740,7 @@
                                                "rev-dep-graphs"
                                                "dep-graphs"))
                                      (symbol->string egg)
-                                     "html")))
+                                     (html-extension))))
             ,egg)))
   (page-template
    `((h1 ,(if reverse?
@@ -752,6 +803,25 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 --graphics-format=<type>
   Format of the [reverse] dependency graph images.  The supported ones
   are those supported by dot (GraphViz).
+
+--compress-html
+  Compress HTML files using gzip.
+
+--html-compressor
+  External program to use to compress HTML files.
+
+--html-compressor-args
+  Arguments to be passed to the external program to compress HTML files.
+
+--compress-graphics
+  Compress graphics files using gzip.
+
+--graphics-compressor
+  External program to use to compress graphics files.
+
+--graphics-compressor-args
+  Arguments to be passed to the external program to compress graphics files.
+
 EOF
 ))
     (with-output-to-port
@@ -790,6 +860,36 @@ EOF
       (die out-dir " already exists. Aborting."))
 
     (when css (set! *page-css* css))
+
+    (compress-html?
+     (and (member "--compress-html" args) #t))
+
+    (html-compressor
+     (or (cmd-line-arg '--html-compressor args)
+         (html-compressor)))
+
+    (html-compressor-args
+     (or (cmd-line-arg '--html-compressor-args args)
+         (html-compressor-args)))
+
+    (compressed-html-extension
+     (or (cmd-line-arg '--compressed-html-extension args)
+         (compressed-html-extension)))
+
+    (compress-graphics?
+     (and (member "--compress-graphics" args) #t))
+
+    (graphics-compressor
+     (or (cmd-line-arg '--graphics-compressor args)
+         (graphics-compressor)))
+
+    (compressed-graphics-extension
+     (or (cmd-line-arg '--compressed-graphics-extension args)
+         (compressed-graphics-extension)))
+
+    (graphics-compressor-args
+     (or (cmd-line-arg '--graphics-compressor-args args)
+         (graphics-compressor-args)))
 
     ;; Create directories
     (let ((installation-report-dir (make-pathname out-dir "install"))
