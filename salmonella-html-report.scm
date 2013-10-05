@@ -400,14 +400,16 @@
   (print "Warning: the external program `dot' has not been found. "
          "[Reverse] dependencies graphs are not going to be generated."))
 
-(define (dot->image dot-file graphics-format)
+(define (dot->image dot-file graphics-format keep-dot-files?)
   (let ((graphics-file
          (pathname-replace-extension dot-file graphics-format)))
     (when dot-installed?
       (system* (sprintf "dot -T~a -o ~A ~A  2>&1"
                         graphics-format
                         graphics-file
-                        dot-file)))
+                        dot-file))
+      (unless keep-dot-files?
+        (delete-file dot-file)))
     (maybe-compress-graphics graphics-file)))
 
 (define (link->dot egg link log reverse?)
@@ -535,7 +537,7 @@
        (alist-ref egg *circular-dependencies*))
    #t))
 
-(define (egg-dependencies->dot egg log dep-graphs-dir graphics-format #!key reverse?)
+(define (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files? #!key reverse?)
   (let ((links '())
         (labels '()))
 
@@ -566,7 +568,7 @@
       (with-output-to-file dot-file
         (lambda ()
           (print (dot-graph egg labels links log reverse?))))
-      (dot->image dot-file graphics-format))))
+      (dot->image dot-file graphics-format keep-dot-files?))))
 
 (define (color-legend)
   `((h4 "Legend")
@@ -822,6 +824,11 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 --graphics-compressor-args
   Arguments to be passed to the external program to compress graphics files.
 
+--keep-dot-files
+  By default, #this-program will remove dot files (GraphViz) after converting
+  them to graphics files.  This command line can be used to avoid removing
+  them.
+
 EOF
 ))
     (with-output-to-port
@@ -837,7 +844,8 @@ EOF
 (let* ((args (command-line-arguments))
        (disable-graphs? (and (member "--disable-graphs" args) #t))
        (graphics-format (or (cmd-line-arg '--graphics-format args) "svg"))
-       (css (cmd-line-arg '--css-uri args)))
+       (css (cmd-line-arg '--css-uri args))
+       (keep-dot-files? (and (member "--keep-dot-files" args) #t)))
 
   (when (< (length args) 2)
     (usage 1))
@@ -959,7 +967,7 @@ EOF
           (for-each (lambda (egg)
                       (info (conc "Generating reverse dependencies graph for " egg))
                       (unless (egg-has-circular-dependencies? egg 'reverse)
-                        (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format reverse?: #t))
+                        (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format keep-dot-files? reverse?: #t))
                       (sxml-log->html
                        (egg-reverse-dependencies-report egg graphics-format log)
                        (make-pathname rev-dep-graphs-dir
@@ -968,7 +976,7 @@ EOF
 
                       (info (conc "Generating dependencies graph for " egg))
                       (unless (egg-has-circular-dependencies? egg #f)
-                        (egg-dependencies->dot egg log dep-graphs-dir graphics-format))
+                        (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files?))
                       (sxml-log->html
                        (egg-dependencies-report egg graphics-format log)
                        (make-pathname dep-graphs-dir
