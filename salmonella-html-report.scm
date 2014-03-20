@@ -804,7 +804,7 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 
 --graphics-format=<type>
   Format of the [reverse] dependency graph images.  The supported ones
-  are those supported by dot (GraphViz).
+  are those supported by dot (GraphViz).  The default format is SVG.
 
 --compress-html
   Compress HTML files using gzip.
