@@ -794,13 +794,13 @@
 Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 
 --verbose
-  Verbose output
+  Verbose output.
 
 --disable-graphs
-  Disable generation of dependency graphs
+  Disable generation of dependency graphs.
 
 --css-uri=<uri>
-  URI of the CSS file to be used in the generatated pages
+  URI of the CSS file to be used in the generatated pages.
 
 --graphics-format=<type>
   Format of the [reverse] dependency graph images.  The supported ones
