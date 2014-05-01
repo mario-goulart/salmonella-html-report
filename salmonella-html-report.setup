@@ -1,10 +1,18 @@
 ;;; salmonella-html-report.setup -*- scheme -*-
 
+;; Compile the extension
+(compile -O3 -d1 -s -J salmonella-html-report.scm)
+(compile -O3 -d1 -s salmonella-html-report.import.scm)
+
 ;; Compile the application
-(compile -S -O3 -d1 salmonella-html-report.scm -o salmonella-html-report)
+(compile -O3 -d1 salmonella-html-report-cmd.scm -o salmonella-html-report)
 
 (define salmonella-html-report-version "1.6")
 
-(install-program 'salmonella-html-report
+(install-extension 'salmonella-html-report
+                   '("salmonella-html-report.so" "salmonella-html-report.import.so")
+                   `((version ,salmonella-html-report-version)))
+
+(install-program 'salmonella-html-report-cmd
                  '("salmonella-html-report")
                  `((version ,salmonella-html-report-version)))

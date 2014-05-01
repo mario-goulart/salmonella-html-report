@@ -1,13 +1,43 @@
-(use sxml-transforms regex posix salmonella salmonella-log-parser)
+(module salmonella-html-report
 
-;; TODO
-;; - maybe optimize `all-dependencies' (memoization?)
+  (compress-html?
+   egg-dependencies-report
+   egg-reverse-dependencies-report
+   graphics-compressor-args
+   compressed-graphics-extension
+   graphics-compressor
+   compress-graphics?
+   compressed-html-extension
+   html-compressor-args
+   html-compressor
+   salmonella-page-css
+   rank-dependencies
+   rank-test-time
+   rank-installation-time
+   egg-dependencies->dot
+   egg-has-circular-dependencies?
+   dot-installed?
+   egg-test-report
+   egg-installation-report
+   make-index
+   sxml-log->html
+   all-dependencies
 
-(define egg-doc-uri "http://wiki.call-cc.org/egg")
-(define *page-css* "http://wiki.call-cc.org/chicken.css")
+   ;; circular-dependency record
+   circular-dependency?
+   )
 
+(import chicken scheme)
+(use data-structures irregex extras files posix srfi-1 srfi-13 utils)
+(use sxml-transforms salmonella salmonella-log-parser)
 
 ;;; Parameters
+
+(define salmonella-page-css
+  (make-parameter "http://wiki.call-cc.org/chicken.css"))
+
+(define egg-doc-uri
+  (make-parameter "http://wiki.call-cc.org/egg"))
 
 ;; Compression
 (define compress-html? (make-parameter #f))
@@ -18,6 +48,7 @@
 (define graphics-compressor (make-parameter "gzip"))
 (define graphics-compressor-args (make-parameter "-9"))
 (define compressed-graphics-extension (make-parameter "svgz"))
+
 
 ;;; Compression
 (define (maybe-compress-html file)
@@ -48,26 +79,7 @@
       (compressed-graphics-extension)
       graphics-format))
 
-;;; Misc
-(define (cmd-line-arg option args)
-  ;; Returns the argument associated to the command line option OPTION
-  ;; in ARGS or #f if OPTION is not found in ARGS or doesn't have any
-  ;; argument.
-  (let ((val (any (cut string-match (conc option "=(.*)") <>) args)))
-    (and val (cadr val))))
-
-(define (die . msg)
-  (with-output-to-port (current-error-port)
-    (lambda ()
-      (print (apply conc msg))))
-  (exit 1))
-
-(define *verbose* #f)
-
-(define (info msg)
-  (when *verbose*
-    (print "=== " msg)))
-
+;;; SXML utils
 (define (menu egg log active)
   (let ((locs `((summary        . "Report summary")
                 (install        . "Installation report")
@@ -93,7 +105,6 @@
                                  ,label))))))
             locs))))
 
-;;; SXML utils
 (define (page-template content #!key title)
   `((literal
      "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\""
@@ -104,7 +115,7 @@
            (meta (@ (name "generator") (content "salmonella-html-report")))
            (title ,title)
            (link (@ (rel "stylesheet")
-                    (href ,*page-css*)
+                    (href ,(salmonella-page-css))
                     (type "text/css")))
            (style (@ (type "text/css"))
              "#salmonella-menu li { display: inline; list-style-type: none; padding-right: 20px; }"))
@@ -129,7 +140,7 @@
 (define (link-egg-doc egg log #!optional text omit-text-if-no-doc?)
   (if (doc-exists? egg log)
       (let ((egg (symbol->string egg)))
-        `(a (@ (href ,(make-pathname egg-doc-uri egg)))
+        `(a (@ (href ,(make-pathname (egg-doc-uri) egg)))
             ,(or text egg)))
       (if omit-text-if-no-doc?
           ""
@@ -268,7 +279,7 @@
                         eggs))))
 
 
-(define (render-warnings log)
+(define (render-warnings log circular-deps)
   (let ((warnings
          (append (filter-map
                   (lambda (entry)
@@ -298,13 +309,13 @@
                               (circular-dep (cdr egg/circ)))
                           (list egg
                                 (conc egg " (or some egg it depends on) contains circular dependencies"))))
-                      *circular-dependencies*))))
+                      circular-deps))))
     (if (null? warnings)
         '()
         `((h2 (@ (id "warnings")) "Warnings")
           ,(zebra-table '("Egg" "Warning") warnings)))))
 
-(define (make-index log eggs)
+(define (make-index log eggs circular-deps)
   (let* ((date (seconds->string (start-time log)))
          (title (string-append "Salmonella report"))
          (skipped-eggs (log-skipped-eggs log)))
@@ -330,7 +341,8 @@
                 (li (a (@ (href "#total-run-time")) "Total run time")))))
 
        ,(render-summary log)
-       ,(render-warnings log)
+       ,(render-warnings log circular-deps)
+
        (h2 (@ (id "installation-failed")) "Installation failed")
        ,(list-eggs/installation-failed eggs log)
 
@@ -478,8 +490,7 @@
           (let ((deps
                  (filter
                   (lambda (e)
-                    (memq egg (egg-dependencies e
-                                                log)))
+                    (memq egg (egg-dependencies e log)))
                   (log-eggs log))))
             (set! rev-deps (cons (cons egg deps) rev-deps))
             deps)))))
@@ -490,7 +501,7 @@
 (define (direct-dependency? egg1 egg2 log)
   (and (memq egg2 (egg-dependencies egg1 log)) #t))
 
-(define (all-dependencies root-egg log #!optional reverse?)
+(define (all-dependencies root-egg eggs log #!optional reverse?)
   ;; Returns a list of [reverse] dependencies for the given egg or a
   ;; circular-dependency object if a circular dependency is detected.
   ;; This procedure is just a helper, not intented to be used by
@@ -517,25 +528,12 @@
 
 (define-record circular-dependency egg1 egg2)
 
-(define *eggs/dependencies* '()) ;; alist mapping dependencies '((egg1 . egg2) ...)
-(define *eggs/reverse-dependencies* '()) ;; alist mapping reverse dependencies '((egg1 . egg2) ...)
-(define *circular-dependencies* '()) ;; alist mapping eggs to circular-dependecy objects
-(define *circular-reverse-dependencies* '()) ;; alist mapping eggs to circular-dependecy objects
+(define (all-egg-dependencies egg eggs/deps circular-deps)
+  (or (alist-ref egg eggs/deps)
+      (alist-ref egg circular-deps)))
 
-(define (all-egg-dependencies egg reverse?)
-  (or (if reverse?
-          (alist-ref egg *eggs/reverse-dependencies*)
-          (alist-ref egg *eggs/dependencies*))
-      (if reverse?
-          (alist-ref egg *circular-reverse-dependencies*)
-          (alist-ref egg *circular-dependencies*))))
-
-(define (egg-has-circular-dependencies? egg reverse?)
-  (and
-   (if reverse?
-       (alist-ref egg *circular-reverse-dependencies*)
-       (alist-ref egg *circular-dependencies*))
-   #t))
+(define (egg-has-circular-dependencies? egg circular-deps)
+  (and (alist-ref egg circular-deps) #t))
 
 (define (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files? #!key reverse?)
   (let ((links '())
@@ -596,13 +594,13 @@
                                                  )))))
                (td "Indirect connection")))))
 
-(define (deps-report egg graphics-format log reverse?)
+(define (deps-report egg eggs/deps circular-deps graphics-format log reverse?)
   (page-template
    `(,(if reverse?
           `(h1 "Reverse dependencies for " ,(link-egg-doc egg log))
           `(h1 "Dependencies for " ,(link-egg-doc egg log)))
      ,(menu egg log (if reverse? 'rev-dep-graphs 'dep-graphs))
-     ,(let ((all-deps (all-egg-dependencies egg reverse?)))
+     ,(let ((all-deps (all-egg-dependencies egg eggs/deps circular-deps)))
         (if (circular-dependency? all-deps)
             `((p "This egg (or some egg "
                  ,(if reverse?
@@ -645,12 +643,11 @@
                     "Dependencies"))))
 
 
+(define (egg-dependencies-report egg eggs/deps circular-deps graphics-format log)
+  (deps-report egg eggs/deps circular-deps graphics-format log #f))
 
-(define (egg-dependencies-report egg graphics-format log)
-  (deps-report egg graphics-format log #f))
-
-(define (egg-reverse-dependencies-report egg graphics-format log)
-  (deps-report egg graphics-format log #t))
+(define (egg-reverse-dependencies-report egg eggs/rev-deps circular-rev-deps graphics-format log)
+  (deps-report egg eggs/rev-deps circular-rev-deps graphics-format log #t))
 
 ;;; Broken dependencies
 (define (broken-dependencies egg log)
@@ -733,7 +730,7 @@
    title: "Test time rank"))
 
 
-(define (rank-dependencies log graphs-disabled? #!optional reverse?)
+(define (rank-dependencies log eggs/deps circular-deps graphs-disabled? #!optional reverse?)
   (define (link-dep egg)
     (if graphs-disabled?
         egg
@@ -758,20 +755,18 @@
               (num-eggs (length all-eggs)))
          (sort
           (map (lambda (egg)
-                 (let* ((all-deps (all-egg-dependencies egg reverse?))
+                 (let* ((all-deps (all-egg-dependencies egg eggs/deps circular-deps))
                         (num-deps (length all-deps)))
                    (list (link-dep egg)
                          num-deps
                          (conc (inexact->exact (round (* (/ num-deps num-eggs) 100))) "%"))))
                (remove (lambda (egg)
-                         (egg-has-circular-dependencies? egg reverse?))
+                         (egg-has-circular-dependencies? egg circular-deps))
                        all-eggs))
           (lambda (a b)
             (> (cadr a) (cadr b))))))
 
-     ,(if (null? (if reverse?
-                     *circular-reverse-dependencies*
-                     *circular-dependencies*))
+     ,(if (null? circular-deps)
           '()
           `((h2 "Eggs with circular dependencies"
                 ,(if reverse?
@@ -779,218 +774,9 @@
                      ""))
             (ul ,@(map (lambda (egg)
                          `(li ,(link-dep egg)))
-                       (map car (if reverse?
-                                    *circular-reverse-dependencies*
-                                    *circular-dependencies*)))))))
+                       (map car circular-deps))))))
    title: (if reverse?
               "Reverse dependencies rank"
               "Dependencies rank")))
 
-
-;;; Usage
-(define (usage #!optional exit-code)
-  (let* ((this-program (pathname-strip-directory (program-name)))
-         (msg #<#EOF
-Usage: #this-program [ <options> ] <salmonella log file> <out dir>
-
---verbose
-  Verbose output.
-
---disable-graphs
-  Disable generation of dependency graphs.
-
---css-uri=<uri>
-  URI of the CSS file to be used in the generatated pages.
-
---graphics-format=<type>
-  Format of the [reverse] dependency graph images.  The supported ones
-  are those supported by dot (GraphViz).  The default format is SVG.
-
---compress-html
-  Compress HTML files using gzip.
-
---html-compressor
-  External program to use to compress HTML files.
-
---html-compressor-args
-  Arguments to be passed to the external program to compress HTML files.
-
---compress-graphics
-  Compress graphics files using gzip.
-
---graphics-compressor
-  External program to use to compress graphics files.
-
---graphics-compressor-args
-  Arguments to be passed to the external program to compress graphics files.
-
---keep-dot-files
-  By default, #this-program will remove dot files (GraphViz) after converting
-  them to graphics files.  This command line can be used to avoid removing
-  them.
-
-EOF
-))
-    (with-output-to-port
-        (if exit-code
-            (current-error-port)
-            (current-output-port))
-      (cut print msg))
-    (when exit-code (exit exit-code))))
-
-
-
-
-(let* ((args (command-line-arguments))
-       (disable-graphs? (and (member "--disable-graphs" args) #t))
-       (graphics-format (or (cmd-line-arg '--graphics-format args) "svg"))
-       (css (cmd-line-arg '--css-uri args))
-       (keep-dot-files? (and (member "--keep-dot-files" args) #t)))
-
-  (when (< (length args) 2)
-    (usage 1))
-
-  (when (member "--verbose" args)
-    (set! *verbose* #t))
-
-  (when (or (member "--help" args)
-            (member "-h" args)
-            (member "-help" args))
-    (usage 0))
-
-  (let ((out-dir (last args))
-        (log-file (last (butlast args))))
-
-    (unless (file-exists? log-file)
-      (die "Could not find " log-file ". Aborting."))
-
-    (when (file-exists? out-dir)
-      (die out-dir " already exists. Aborting."))
-
-    (when css (set! *page-css* css))
-
-    (compress-html?
-     (and (member "--compress-html" args) #t))
-
-    (html-compressor
-     (or (cmd-line-arg '--html-compressor args)
-         (html-compressor)))
-
-    (html-compressor-args
-     (or (cmd-line-arg '--html-compressor-args args)
-         (html-compressor-args)))
-
-    (compressed-html-extension
-     (or (cmd-line-arg '--compressed-html-extension args)
-         (compressed-html-extension)))
-
-    (compress-graphics?
-     (and (member "--compress-graphics" args) #t))
-
-    (graphics-compressor
-     (or (cmd-line-arg '--graphics-compressor args)
-         (graphics-compressor)))
-
-    (compressed-graphics-extension
-     (or (cmd-line-arg '--compressed-graphics-extension args)
-         (compressed-graphics-extension)))
-
-    (graphics-compressor-args
-     (or (cmd-line-arg '--graphics-compressor-args args)
-         (graphics-compressor-args)))
-
-    ;; Create directories
-    (let ((installation-report-dir (make-pathname out-dir "install"))
-          (test-report-dir (make-pathname out-dir "test"))
-          (dep-graphs-dir (make-pathname out-dir "dep-graphs"))
-          (rev-dep-graphs-dir (make-pathname out-dir "rev-dep-graphs"))
-          (ranks-dir (make-pathname out-dir "ranks")))
-      (create-directory out-dir 'with-parents)
-      (create-directory installation-report-dir)
-      (create-directory test-report-dir)
-      (create-directory dep-graphs-dir)
-      (create-directory rev-dep-graphs-dir)
-      (create-directory ranks-dir)
-
-      (let* ((log (read-log-file log-file))
-             (eggs (sort-eggs (log-eggs log))))
-
-
-        ;; Generate dependencies data
-        (info "Generating dependencies data")
-        (for-each (lambda (egg)
-                    (let ((deps (all-dependencies egg log)))
-                      (if (circular-dependency? deps)
-                          (set! *circular-dependencies*
-                                (cons (cons egg deps) *circular-dependencies*))
-                          (set! *eggs/dependencies*
-                                (cons (cons egg deps) *eggs/dependencies*)))))
-                  eggs)
-        (for-each (lambda (egg)
-                    (let ((deps (all-dependencies egg log 'reverse)))
-                      (if (circular-dependency? deps)
-                          (set! *circular-reverse-dependencies*
-                                (cons (cons egg deps) *circular-reverse-dependencies*))
-                          (set! *eggs/reverse-dependencies*
-                                (cons (cons egg deps) *eggs/reverse-dependencies*)))))
-                  eggs)
-
-        ;; Generate the index page
-        (info "Generating the index page")
-        (sxml-log->html (make-index log eggs) (make-pathname out-dir "index.html"))
-
-        ;; Generate the installation report for each egg
-        (for-each (lambda (egg)
-                    (info (conc "Generating installation report for " egg))
-                    (sxml-log->html
-                     (egg-installation-report egg log)
-                     (make-pathname installation-report-dir
-                                    (symbol->string egg)
-                                    "html")))
-                  eggs)
-
-        ;; Generate the test report for each egg that has test and whose
-        ;; installation is successful
-        (for-each (lambda (egg)
-                    (when (and (has-test? egg log)
-                               (zero? (install-status egg log)))
-                      (info (conc "Generating test report for " egg))
-                      (sxml-log->html
-                       (egg-test-report egg log)
-                       (make-pathname test-report-dir
-                                      (symbol->string egg)
-                                      "html"))))
-                  eggs)
-
-        ;; Generate the dependencies graphs page for each egg
-        (when (and dot-installed? (not disable-graphs?))
-          (for-each (lambda (egg)
-                      (info (conc "Generating reverse dependencies graph for " egg))
-                      (unless (egg-has-circular-dependencies? egg 'reverse)
-                        (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format keep-dot-files? reverse?: #t))
-                      (sxml-log->html
-                       (egg-reverse-dependencies-report egg graphics-format log)
-                       (make-pathname rev-dep-graphs-dir
-                                      (symbol->string egg)
-                                      "html"))
-
-                      (info (conc "Generating dependencies graph for " egg))
-                      (unless (egg-has-circular-dependencies? egg #f)
-                        (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files?))
-                      (sxml-log->html
-                       (egg-dependencies-report egg graphics-format log)
-                       (make-pathname dep-graphs-dir
-                                      (symbol->string egg)
-                                      "html")))
-                    eggs))
-
-        ;; Generate the ranks page
-        (sxml-log->html (rank-installation-time log)
-                        (make-pathname ranks-dir "installation-time" "html"))
-        (sxml-log->html (rank-test-time log)
-                        (make-pathname ranks-dir "test-time" "html"))
-        (sxml-log->html (rank-dependencies log disable-graphs?)
-                        (make-pathname ranks-dir "deps" "html"))
-        (sxml-log->html (rank-dependencies log disable-graphs? 'reverse)
-                        (make-pathname ranks-dir "rev-deps" "html"))
-        ))))
+) ;; end module
