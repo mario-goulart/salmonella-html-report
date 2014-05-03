@@ -508,9 +508,11 @@
   ;; regular code.  Use `all-egg-dependencies' instead.
   (let ((visited '()))
     (define (get-deps egg)
-      (let ((deps (if reverse?
-                      (reverse-dependencies egg log)
-                      (egg-dependencies egg log))))
+      (let ((deps (if (memq egg eggs)
+                      (if reverse?
+                          (reverse-dependencies egg log)
+                          (egg-dependencies egg log))
+                      '())))
         (cond ((null? deps)
                '())
               ((find (lambda (dep)
@@ -537,7 +539,8 @@
 
 (define (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files? #!key reverse?)
   (let ((links '())
-        (labels '()))
+        (labels '())
+        (eggs (log-eggs log)))
 
     (define (add-link! from to)
       (unless (member (cons from to) links)
@@ -549,17 +552,18 @@
           (set! labels (cons egg/version/license labels)))))
 
     (define (egg-deps->dot! egg)
-      (let ((deps (if reverse?
-                      (reverse-dependencies egg log)
-                      (egg-dependencies egg log))))
-        (add-label! egg (egg-version egg log) (egg-license egg log))
-        (for-each (lambda (dep)
-                    (add-label! dep (egg-version dep log) (egg-license dep log))
-                    (egg-deps->dot! dep)
-                    (if reverse?
-                        (add-link! dep egg)
-                        (add-link! egg dep)))
-                  deps)))
+      (when (memq egg eggs)
+        (let ((deps (if reverse?
+                        (reverse-dependencies egg log)
+                        (egg-dependencies egg log))))
+          (add-label! egg (egg-version egg log) (egg-license egg log))
+          (for-each (lambda (dep)
+                      (add-label! dep (egg-version dep log) (egg-license dep log))
+                      (egg-deps->dot! dep)
+                      (if reverse?
+                          (add-link! dep egg)
+                          (add-link! egg dep)))
+                    deps))))
 
     (egg-deps->dot! egg)
     (let ((dot-file (make-pathname dep-graphs-dir (symbol->string egg) "dot")))
