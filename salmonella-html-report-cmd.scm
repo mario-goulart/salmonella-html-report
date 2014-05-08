@@ -1,7 +1,7 @@
 (module salmonella-html-report-cmd ()
 
 (import chicken scheme)
-(use data-structures files ports posix regex srfi-1)
+(use data-structures files ports posix srfi-1)
 (use salmonella-html-report salmonella-log-parser)
 
 ;; TODO
@@ -9,13 +9,6 @@
 
 
 ;;; Misc
-(define (cmd-line-arg option args)
-  ;; Returns the argument associated to the command line option OPTION
-  ;; in ARGS or #f if OPTION is not found in ARGS or doesn't have any
-  ;; argument.
-  (let ((val (any (cut string-match (conc option "=(.*)") <>) args)))
-    (and val (cadr val))))
-
 (define (die . msg)
   (with-output-to-port (current-error-port)
     (lambda ()

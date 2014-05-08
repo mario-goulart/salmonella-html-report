@@ -25,6 +25,7 @@
    sxml-log->html
    all-dependencies
    zebra-table
+   cmd-line-arg
 
    ;; circular-dependency record
    circular-dependency?
@@ -790,5 +791,17 @@
    title: (if reverse?
               "Reverse dependencies rank"
               "Dependencies rank")))
+
+;;; Misc
+(define (cmd-line-arg option args)
+  ;; Returns the argument associated to the command line option OPTION
+  ;; in ARGS or #f if OPTION is not found in ARGS or doesn't have any
+  ;; argument.
+  (let ((val (any (lambda (arg)
+                    (irregex-match
+                     `(seq ,(->string option) "=" (submatch (* any)))
+                     arg))
+                  args)))
+    (and val (irregex-match-substring val 1))))
 
 ) ;; end module
