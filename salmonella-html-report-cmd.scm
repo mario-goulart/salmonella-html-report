@@ -189,7 +189,7 @@ EOF
         (for-each (lambda (egg)
                     (info (conc "Generating installation report for " egg))
                     (sxml-log->html
-                     (egg-installation-report egg log)
+                     (egg-installation-report-page egg log)
                      (make-pathname installation-report-dir
                                     (symbol->string egg)
                                     "html")))
@@ -202,7 +202,7 @@ EOF
                                (zero? (install-status egg log)))
                       (info (conc "Generating test report for " egg))
                       (sxml-log->html
-                       (egg-test-report egg log)
+                       (egg-test-report-page egg log)
                        (make-pathname test-report-dir
                                       (symbol->string egg)
                                       "html"))))

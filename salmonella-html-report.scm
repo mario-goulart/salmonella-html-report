@@ -18,7 +18,9 @@
    egg-has-circular-dependencies?
    dot-installed?
    egg-test-report
+   egg-test-report-page
    egg-installation-report
+   egg-installation-report-page
    make-index
    sxml-log->html
    all-dependencies
@@ -370,38 +372,43 @@
 
 
 ;;; Egg installation report page
-(define (egg-installation-report egg log)
+(define (egg-installation-report egg log #!key menu)
+  `((h1 "Installation output for " ,(link-egg-doc egg log) " "
+        ,(let ((status (install-status egg log)))
+           (if (and status (zero? status))
+               "[ok]"
+               "[fail]")))
+    ,(or menu '())
+    ,(cond ((not (zero? (fetch-status egg log)))
+            `(pre ,(fetch-message egg log)))
+           ((not (meta-data egg log))
+            '(p "Error reading .meta file"))
+           (else
+            `((p "Installation time: "
+                 ,(prettify-time
+                   (inexact->exact (install-duration egg log))))
+              (pre ,(install-message egg log)))))))
+
+(define (egg-installation-report-page egg log)
   (page-template
-   `((h1 "Installation output for " ,(link-egg-doc egg log) " "
-         ,(let ((status (install-status egg log)))
-            (if (and status (zero? status))
-                "[ok]"
-                "[fail]")))
-     ,(menu egg log 'install)
-     ,(cond ((not (zero? (fetch-status egg log)))
-             `(pre ,(fetch-message egg log)))
-            ((not (meta-data egg log))
-             '(p "Error reading .meta file"))
-            (else
-             `((p "Installation time: "
-                  ,(prettify-time
-                    (inexact->exact (install-duration egg log))))
-               (pre ,(install-message egg log))))))
+   (egg-installation-report egg log menu: (menu egg log 'install))
    title: (conc egg ": Installation report")))
 
-
 ;;; Egg test report page
-(define (egg-test-report egg log)
+(define (egg-test-report egg log #!key menu)
+  `((h1 "Test output for " ,(link-egg-doc egg log) " ["
+        ,(if (zero? (test-status egg log))
+             "ok"
+             "fail")
+        "]")
+    ,(or menu '())
+    (p "Testing time: "
+       ,(prettify-time (inexact->exact (test-duration egg log))))
+    (pre ,(test-message egg log))))
+
+(define (egg-test-report-page egg log)
   (page-template
-   `((h1 "Test output for " ,(link-egg-doc egg log) " ["
-         ,(if (zero? (test-status egg log))
-              "ok"
-              "fail")
-         "]")
-     ,(menu egg log 'test)
-     (p "Testing time: "
-        ,(prettify-time (inexact->exact (test-duration egg log))))
-     (pre ,(test-message egg log)))
+   (egg-test-report egg log menu: (menu egg log 'test))
    title: (conc egg ": Test output")))
 
 ;;; Dependencies
