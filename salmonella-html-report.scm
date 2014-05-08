@@ -26,13 +26,14 @@
    all-dependencies
    zebra-table
    cmd-line-arg
+   die
 
    ;; circular-dependency record
    circular-dependency?
    )
 
 (import chicken scheme)
-(use data-structures irregex extras files posix srfi-1 srfi-13 utils)
+(use data-structures irregex extras files ports posix srfi-1 srfi-13 utils)
 (use sxml-transforms salmonella salmonella-log-parser)
 
 ;;; Parameters
@@ -803,5 +804,11 @@
                      arg))
                   args)))
     (and val (irregex-match-substring val 1))))
+
+(define (die . msg)
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (print (apply conc msg))))
+  (exit 1))
 
 ) ;; end module

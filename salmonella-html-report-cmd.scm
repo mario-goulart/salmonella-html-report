@@ -9,12 +9,6 @@
 
 
 ;;; Misc
-(define (die . msg)
-  (with-output-to-port (current-error-port)
-    (lambda ()
-      (print (apply conc msg))))
-  (exit 1))
-
 (define *verbose* #f)
 
 (define (info msg)
