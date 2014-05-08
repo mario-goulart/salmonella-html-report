@@ -24,6 +24,7 @@
    make-index
    sxml-log->html
    all-dependencies
+   zebra-table
 
    ;; circular-dependency record
    circular-dependency?
