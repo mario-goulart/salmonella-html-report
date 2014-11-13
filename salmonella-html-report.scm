@@ -399,15 +399,18 @@
 
 ;;; Egg test report page
 (define (egg-test-report egg log #!key menu)
-  `((h1 "Test output for " ,(link-egg-doc egg log) " ["
-        ,(if (zero? (test-status egg log))
-             "ok"
-             "fail")
-        "]")
-    ,(or menu '())
-    (p "Testing time: "
-       ,(prettify-time (inexact->exact (test-duration egg log))))
-    (pre ,(test-message egg log))))
+  (let ((status (test-status egg log)))
+    `((h1 "Test output for " ,(link-egg-doc egg log) " ["
+          ,(if (and status (zero? status))
+               "ok"
+               "fail")
+          "]")
+      ,(or menu '())
+      ,(if status
+           `((p "Testing time: "
+                ,(prettify-time (inexact->exact (test-duration egg log))))
+             (pre ,(test-message egg log)))
+           '()))))
 
 (define (egg-test-report-page egg log)
   (page-template
