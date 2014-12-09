@@ -161,7 +161,7 @@
                              "test")
                          egg
                          (html-extension))))
-              ,(if (zero? status)
+              ,(if (status-zero? status)
                    (or text "ok")
                    (or text "fail"))))
         (or text-no-test ""))))
@@ -246,8 +246,7 @@
     (map (lambda (egg)
            (egg-summary-line egg log #t))
          (remove (lambda (egg)
-                   (let ((status (install-status egg log)))
-                     (and status (zero? status))))
+                   (status-zero? (install-status egg log)))
                  eggs))))
 
 
@@ -262,24 +261,22 @@
     ,(list-eggs (filter (lambda (egg)
                           (let ((status (install-status egg log))
                                 (test-status (test-status egg log)))
-                            (and status
-                                 (zero? status)
+                            (and (status-zero? status)
+                                 test-status
                                  (> test-status 0))))
                         eggs))
     (h3 (@ (id "installation-succeeded-test-succeeded")) "Tests succeeded")
     ,(list-eggs (filter (lambda (egg)
                           (let ((status (install-status egg log))
                                 (test-status (test-status egg log)))
-                            (and status
-                                 (zero? status)
-                                 (zero? test-status))))
+                            (and (status-zero? status)
+                                 (status-zero? test-status))))
                         eggs))
     (h3 (@ (id "installation-succeeded-no-test")) "No tests")
     ,(list-eggs (filter (lambda (egg)
                           (let ((status (install-status egg log))
                                 (test-status (test-status egg log)))
-                            (and status
-                                 (zero? status)
+                            (and (status-zero? status)
                                  (eq? test-status -1))))
                         eggs))))
 
@@ -378,11 +375,11 @@
 (define (egg-installation-report egg log #!key menu)
   `((h1 "Installation output for " ,(link-egg-doc egg log) " "
         ,(let ((status (install-status egg log)))
-           (if (and status (zero? status))
+           (if (status-zero? status)
                "[ok]"
                "[fail]")))
     ,(or menu '())
-    ,(cond ((not (zero? (fetch-status egg log)))
+    ,(cond ((not (status-zero? (fetch-status egg log)))
             `(pre ,(fetch-message egg log)))
            ((not (meta-data egg log))
             '(p "Error reading .meta file"))
@@ -401,7 +398,7 @@
 (define (egg-test-report egg log #!key menu)
   (let ((status (test-status egg log)))
     `((h1 "Test output for " ,(link-egg-doc egg log) " ["
-          ,(if (and status (zero? status))
+          ,(if (status-zero? status)
                "ok"
                "fail")
           "]")
@@ -471,7 +468,7 @@
           "\""
           ;; If egg installation failed, paint the node red
           (let ((status (install-status egg log)))
-            (if (and status (zero? status))
+            (if (status-zero? status)
                 ""
                 ",color=red,style=filled"))
           ;; If egg test failed, paint the node border red
@@ -670,8 +667,7 @@
 (define (broken-dependencies egg log)
   (let ((deps (egg-dependencies egg log)))
     (filter (lambda (dep)
-              (let ((status (install-status dep log)))
-                (and status (not (zero? status)))))
+              (not (status-zero? (install-status dep log))))
             deps)))
 
 ;;; GPL infection
