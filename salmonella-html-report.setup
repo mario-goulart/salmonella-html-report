@@ -7,7 +7,7 @@
 ;; Compile the application
 (compile -O3 -d1 salmonella-html-report-cmd.scm -o salmonella-html-report)
 
-(define salmonella-html-report-version "1.6")
+(define salmonella-html-report-version "1.7")
 
 (install-extension 'salmonella-html-report
                    '("salmonella-html-report.so" "salmonella-html-report.import.so")
