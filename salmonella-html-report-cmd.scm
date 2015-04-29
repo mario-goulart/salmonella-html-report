@@ -1,7 +1,7 @@
 (module salmonella-html-report-cmd ()
 
 (import chicken scheme)
-(use data-structures files ports posix srfi-1)
+(use data-structures extras files ports posix srfi-1)
 (use salmonella-html-report salmonella-log-parser)
 
 ;; TODO
@@ -196,30 +196,34 @@ EOF
                   eggs)
 
         ;; Generate the dependencies graphs page for each egg
-        (when (and dot-installed? (not disable-graphs?))
-          (for-each (lambda (egg)
-                      (info (conc "Generating reverse dependencies graph for " egg))
-                      (unless (egg-has-circular-dependencies? egg circular-deps)
-                        (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format keep-dot-files? reverse?: #t))
-                      (sxml-log->html
-                       (egg-reverse-dependencies-report egg
-                                                        eggs/rev-deps
-                                                        circular-rev-deps
-                                                        graphics-format
-                                                        log)
-                       (make-pathname rev-dep-graphs-dir
-                                      (symbol->string egg)
-                                      "html"))
+        (if (and (dot-installed?) (not disable-graphs?))
+            (for-each (lambda (egg)
+                        (info (conc "Generating reverse dependencies graph for " egg))
+                        (unless (egg-has-circular-dependencies? egg circular-deps)
+                          (egg-dependencies->dot egg log rev-dep-graphs-dir graphics-format keep-dot-files? reverse?: #t))
+                        (sxml-log->html
+                         (egg-reverse-dependencies-report egg
+                                                          eggs/rev-deps
+                                                          circular-rev-deps
+                                                          graphics-format
+                                                          log)
+                         (make-pathname rev-dep-graphs-dir
+                                        (symbol->string egg)
+                                        "html"))
 
-                      (info (conc "Generating dependencies graph for " egg))
-                      (unless (egg-has-circular-dependencies? egg circular-deps)
-                        (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files?))
-                      (sxml-log->html
-                       (egg-dependencies-report egg eggs/deps circular-deps graphics-format log)
-                       (make-pathname dep-graphs-dir
-                                      (symbol->string egg)
-                                      "html")))
-                    eggs))
+                        (info (conc "Generating dependencies graph for " egg))
+                        (unless (egg-has-circular-dependencies? egg circular-deps)
+                          (egg-dependencies->dot egg log dep-graphs-dir graphics-format keep-dot-files?))
+                        (sxml-log->html
+                         (egg-dependencies-report egg eggs/deps circular-deps graphics-format log)
+                         (make-pathname dep-graphs-dir
+                                        (symbol->string egg)
+                                        "html")))
+                      eggs)
+            (fprintf (current-error-port)
+                     "~a ~a\n"
+                     "Warning: the external program `dot' has not been found."
+                     "[Reverse] dependencies graphs are not going to be generated."))
 
         ;; Generate the ranks page
         (sxml-log->html (rank-installation-time log)

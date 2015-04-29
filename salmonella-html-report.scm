@@ -416,16 +416,19 @@
 
 ;;; Dependencies
 (define dot-installed?
-  (handle-exceptions exn #f (system* "dot -V > /dev/null 2>&1")))
-
-(unless dot-installed?
-  (print "Warning: the external program `dot' has not been found. "
-         "[Reverse] dependencies graphs are not going to be generated."))
+  (let ((installed? 'undetermined))
+    (lambda ()
+      (when (eq? installed? 'undetermined)
+        (set! installed?
+              (handle-exceptions exn
+                #f
+                (and (system* "dot -V > /dev/null 2>&1") #t))))
+      installed?)))
 
 (define (dot->image dot-file graphics-format keep-dot-files?)
   (let ((graphics-file
          (pathname-replace-extension dot-file graphics-format)))
-    (when dot-installed?
+    (when (dot-installed?)
       (system* (sprintf "dot -T~a -o ~A ~A  2>&1"
                         graphics-format
                         graphics-file
