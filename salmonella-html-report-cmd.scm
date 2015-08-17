@@ -61,7 +61,7 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 EOF
 ))
     (with-output-to-port
-        (if exit-code
+        (if (and exit-code (not (zero? exit-code)))
             (current-error-port)
             (current-output-port))
       (cut print msg))
