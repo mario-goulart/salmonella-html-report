@@ -74,16 +74,16 @@ EOF
        (css (cmd-line-arg '--css-uri args))
        (keep-dot-files? (and (member "--keep-dot-files" args) #t)))
 
+  (when (or (member "--help" args)
+            (member "-help" args)
+            (member "-h" args))
+    (usage 0))
+
   (when (< (length args) 2)
     (usage 1))
 
   (when (member "--verbose" args)
     (set! *verbose* #t))
-
-  (when (or (member "--help" args)
-            (member "-h" args)
-            (member "-help" args))
-    (usage 0))
 
   (let ((out-dir (last args))
         (log-file (last (butlast args))))
