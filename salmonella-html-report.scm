@@ -667,11 +667,16 @@
   (deps-report egg eggs/rev-deps circular-rev-deps graphics-format log #t))
 
 ;;; Broken dependencies
-(define (broken-dependencies egg log)
-  (let ((deps (egg-dependencies egg log)))
-    (filter (lambda (dep)
-              (not (status-zero? (install-status dep log))))
-            deps)))
+(define broken-dependencies
+  (let ((all-eggs #f))
+    (lambda (egg log)
+      (unless all-eggs
+        (set! all-eggs (log-eggs log)))
+      (let ((deps (egg-dependencies egg log)))
+        (filter (lambda (dep)
+                  (and (memq dep all-eggs)
+                       (not (status-zero? (install-status dep log)))))
+                deps)))))
 
 ;;; GPL infection
 (define (gpl? license)
