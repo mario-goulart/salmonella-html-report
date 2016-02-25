@@ -686,7 +686,7 @@
 
 (define (gpl-dependencies egg log)
   (and (not (gpl? (egg-license egg log)))
-       (let* ((deps (egg-dependencies egg log with-test-dependencies?: #t))
+       (let* ((deps (egg-dependencies egg log with-test-dependencies?: #f))
               (gpl-deps (filter-map (lambda (egg)
                                       (and (gpl? (egg-license egg log))
                                            egg))
