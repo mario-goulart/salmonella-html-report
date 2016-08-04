@@ -39,7 +39,7 @@
 ;;; Parameters
 
 (define salmonella-page-css
-  (make-parameter "http://wiki.call-cc.org/chicken.css"))
+  (make-parameter "//wiki.call-cc.org/chicken.css"))
 
 (define egg-doc-uri
   (make-parameter "http://wiki.call-cc.org/egg"))
