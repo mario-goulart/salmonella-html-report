@@ -1,8 +1,21 @@
 (module salmonella-html-report-cmd ()
 
-(import chicken scheme)
-(use data-structures extras files ports posix srfi-1)
-(use salmonella-html-report salmonella-log-parser)
+(import scheme)
+
+(cond-expand
+  (chicken-4
+   (import chicken)
+   (use data-structures extras files ports posix srfi-1)
+   (use salmonella-html-report salmonella-log-parser))
+  (chicken-5
+   (import (chicken base)
+           (chicken file)
+           (chicken format)
+           (chicken pathname)
+           (chicken port)
+           (chicken process-context)
+           (chicken string))
+   (import salmonella-html-report salmonella-log-parser srfi-1)))
 
 ;; TODO
 ;; - maybe optimize `all-dependencies' (memoization?)

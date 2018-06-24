@@ -1,0 +1,13 @@
+;; -*- scheme -*-
+((synopsis "A tool to generate HTML ouput out of salmonella log files")
+ (author "Mario Domenech Goulart")
+ (category egg-tools)
+ (license "BSD")
+ (build-dependencies
+  salmonella
+  srfi-13
+  sxml-transforms)
+ (components (extension salmonella-html-report)
+             (program salmonella-html-report-cmd
+                      (install-name salmonella-html-report)
+                      (component-dependencies salmonella-html-report))))

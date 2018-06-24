@@ -32,9 +32,26 @@
    circular-dependency?
    )
 
-(import chicken scheme)
-(use data-structures irregex extras files ports posix srfi-1 srfi-13 utils)
-(use sxml-transforms salmonella salmonella-log-parser)
+(import scheme)
+
+(cond-expand
+  (chicken-4
+   (import chicken)
+   (use data-structures irregex extras files ports posix srfi-1 srfi-13 utils)
+   (use sxml-transforms salmonella salmonella-log-parser))
+  (chicken-5
+   (import (chicken base)
+           (chicken condition)
+           (chicken file)
+           (chicken format)
+           (chicken irregex)
+           (chicken pathname)
+           (chicken port)
+           (chicken process)
+           (chicken sort)
+           (chicken string)
+           (chicken time posix))
+   (import sxml-transforms salmonella salmonella-log-parser srfi-1 srfi-13)))
 
 ;;; Parameters
 
