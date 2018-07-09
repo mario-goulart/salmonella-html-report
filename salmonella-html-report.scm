@@ -59,7 +59,11 @@
   (make-parameter "//wiki.call-cc.org/chicken.css"))
 
 (define egg-doc-uri
-  (make-parameter "http://wiki.call-cc.org/egg"))
+  (make-parameter
+   (sprintf "http://wiki.call-cc.org/eggref/~a"
+            (cond-expand
+              (chicken-4 4)
+              (chicken-5 4)))))
 
 ;; Compression
 (define compress-html? (make-parameter #f))
