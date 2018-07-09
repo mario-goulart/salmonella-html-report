@@ -5,6 +5,7 @@
  (license "BSD")
  (build-dependencies
   salmonella
+  srfi-1
   srfi-13
   sxml-transforms)
  (components (extension salmonella-html-report)
