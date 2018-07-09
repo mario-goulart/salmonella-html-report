@@ -8,7 +8,9 @@
   srfi-1
   srfi-13
   sxml-transforms)
- (components (extension salmonella-html-report)
+ (components (extension salmonella-html-report
+                        (csc-options "-O3" "-d1"))
              (program salmonella-html-report-cmd
+                      (csc-options "-O3" "-d1")
                       (install-name salmonella-html-report)
                       (component-dependencies salmonella-html-report))))
