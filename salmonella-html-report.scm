@@ -63,7 +63,7 @@
    (sprintf "http://wiki.call-cc.org/eggref/~a"
             (cond-expand
               (chicken-4 4)
-              (chicken-5 4)))))
+              (chicken-5 5)))))
 
 ;; Compression
 (define compress-html? (make-parameter #f))
