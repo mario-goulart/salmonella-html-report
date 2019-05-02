@@ -79,20 +79,22 @@
 ;;; Compression
 (define (maybe-compress-html file)
   (when (compress-html?)
-    (system* "~a ~a -c ~a > ~a"
-             (html-compressor)
-             (html-compressor-args)
-             file
-             (pathname-replace-extension file (compressed-html-extension)))
+    (system*
+     (sprintf "~a ~a -c ~a > ~a"
+              (html-compressor)
+              (html-compressor-args)
+              file
+              (pathname-replace-extension file (compressed-html-extension))))
     (delete-file file)))
 
 (define (maybe-compress-graphics file)
   (when (compress-graphics?)
-    (system* "~a ~a -c ~a > ~a"
-             (graphics-compressor)
-             (graphics-compressor-args)
-             file
-             (pathname-replace-extension file (compressed-graphics-extension)))
+    (system*
+     (sprintf "~a ~a -c ~a > ~a"
+              (graphics-compressor)
+              (graphics-compressor-args)
+              file
+              (pathname-replace-extension file (compressed-graphics-extension))))
     (delete-file file)))
 
 (define (html-extension)
