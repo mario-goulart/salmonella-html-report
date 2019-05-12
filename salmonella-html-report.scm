@@ -304,6 +304,28 @@
                         eggs))))
 
 
+(define (get-egg-maintainer egg log)
+  (let ((meta (meta-data egg log)))
+    (or (and-let* ((maintainer (or (alist-ref 'maintainer meta)
+                                   (alist-ref 'author meta))))
+          (car maintainer))
+        "")))
+
+
+(define (list-eggs/undocumented log)
+  (let* ((undocumented-eggs
+          (filter-map (lambda (entry)
+                        (and (eq? 'check-doc (report-action entry))
+                             (not (status-zero? (report-status entry)))
+                             (let ((egg (report-egg entry)))
+                               (list egg
+                                     (get-egg-maintainer egg log)))))
+                      log)))
+    (if (null? undocumented-eggs)
+        '()
+        (zebra-table '("Egg" "Maintainer") undocumented-eggs))))
+
+
 (define (render-warnings log circular-deps)
   (let ((warnings
          (append (filter-map
@@ -358,6 +380,7 @@
                       (ul (li (a (@ (href "#installation-succeeded-test-failed")) "Test failed"))
                           (li (a (@ (href "#installation-succeeded-test-succeeded")) "Test succeeded"))
                           (li (a (@ (href "#installation-succeeded-no-test")) "No test"))))))
+              '((li (a (@ (href "#undocumented-eggs")) "Undocumented eggs")))
               (if (null? skipped-eggs)
                   '()
                   '((li (a (@ (href "#skipped-eggs")) "Skipped eggs"))))
@@ -373,6 +396,12 @@
 
        (h2 (@ (id "installation-succeeded")) "Installation succeeded")
        ,(list-eggs/installation-succeeded eggs log)
+
+       (h2 (@ (id "undocumented-eggs")) "Undocumented eggs")
+       ,(let ((undocumented (list-eggs/undocumented log)))
+          (if (null? undocumented)
+              '(p "All eggs are documented.")
+              undocumented))
 
        ,(if (null? skipped-eggs)
             '()
