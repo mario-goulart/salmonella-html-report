@@ -4,7 +4,7 @@
  (category egg-tools)
  (license "BSD")
  (build-dependencies
-  salmonella
+  (salmonella "3.0.0")
   srfi-1
   srfi-13
   sxml-transforms)
