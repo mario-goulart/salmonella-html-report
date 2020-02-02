@@ -334,7 +334,8 @@
                       (and (memq action '(check-dependencies
                                           check-category
                                           check-license
-                                          check-author))
+                                          check-author
+                                          useless-test-dependencies))
                            (list (report-egg entry)
                                  (report-message entry)))))
                   log)
