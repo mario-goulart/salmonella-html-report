@@ -112,8 +112,8 @@
   (let ((locs `((summary        . "Report summary")
                 (install        . "Installation report")
                 (test           . "Test report")
-                (dep-graphs     . "Dependencies graphs")
-                (rev-dep-graphs . "Reverse dependencies graphs"))))
+                (dep-graphs     . "Dependency graph")
+                (rev-dep-graphs . "Reverse dependency graph"))))
     `(ul (@ (id "salmonella-menu"))
          ,@(filter-map
             (lambda (item)
