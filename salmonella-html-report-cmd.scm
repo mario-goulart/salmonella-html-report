@@ -20,6 +20,7 @@
 ;; TODO
 ;; - maybe optimize `all-dependencies' (memoization?)
 
+(include "version.scm")
 
 ;;; Misc
 (define *verbose* #f)
@@ -37,6 +38,9 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
 
 --verbose
   Verbose output.
+
+--version
+  Show version and exit.
 
 --disable-graphs
   Disable generation of dependency graphs.
@@ -70,7 +74,6 @@ Usage: #this-program [ <options> ] <salmonella log file> <out dir>
   By default, #this-program will remove dot files (GraphViz) after converting
   them to graphics files.  This command line can be used to avoid removing
   them.
-
 EOF
 ))
     (with-output-to-port
@@ -91,6 +94,10 @@ EOF
             (member "-help" args)
             (member "-h" args))
     (usage 0))
+
+  (when (member "--version" args)
+    (print salmonella-html-report-version)
+    (exit 0))
 
   (when (< (length args) 2)
     (usage 1))
