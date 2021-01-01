@@ -306,10 +306,12 @@
 
 (define (get-egg-maintainer egg log)
   (let ((meta (meta-data egg log)))
-    (or (and-let* ((maintainer (or (alist-ref 'maintainer meta)
-                                   (alist-ref 'author meta))))
-          (car maintainer))
-        "")))
+    (if meta
+        (or (and-let* ((maintainer (or (alist-ref 'maintainer meta)
+                                       (alist-ref 'author meta))))
+              (car maintainer))
+            "")
+        "Could not determine the maintainer -- no egg metadata")))
 
 
 (define (list-eggs/undocumented log)
