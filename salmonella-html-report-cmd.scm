@@ -7,7 +7,7 @@
    (import chicken)
    (use data-structures extras files ports posix srfi-1)
    (use salmonella-html-report salmonella-log-parser))
-  (chicken-5
+  ((or chicken-5 chicken-6)
    (import (chicken base)
            (chicken file)
            (chicken format)

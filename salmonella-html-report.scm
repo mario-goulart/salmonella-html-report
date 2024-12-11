@@ -39,7 +39,7 @@
    (import chicken)
    (use data-structures irregex extras files ports posix srfi-1 srfi-13 utils)
    (use sxml-transforms salmonella salmonella-log-parser))
-  (chicken-5
+  ((or chicken-5 chicken-6)
    (import (chicken base)
            (chicken condition)
            (chicken file)
@@ -51,7 +51,11 @@
            (chicken sort)
            (chicken string)
            (chicken time posix))
-   (import sxml-transforms salmonella salmonella-log-parser srfi-1 srfi-13)))
+   (import sxml-transforms salmonella salmonella-log-parser srfi-1 srfi-13)
+
+   (cond-expand
+    (chicken-6 (import (scheme base)))))
+  )
 
 ;;; Parameters
 
@@ -63,7 +67,8 @@
    (sprintf "http://wiki.call-cc.org/eggref/~a"
             (cond-expand
               (chicken-4 4)
-              (chicken-5 5)))))
+              (chicken-5 5)
+              (chicken-6 6)))))
 
 ;; Compression
 (define compress-html? (make-parameter #f))
