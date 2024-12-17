@@ -54,7 +54,8 @@
    (import sxml-transforms salmonella salmonella-log-parser srfi-1 srfi-13)
 
    (cond-expand
-    (chicken-6 (import (scheme base)))))
+    (chicken-6 (import (scheme base)))
+    (else)))
   )
 
 ;;; Parameters
